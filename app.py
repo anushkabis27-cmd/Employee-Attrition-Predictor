@@ -16,7 +16,7 @@ RED = "#FF3131"
 YELLOW = "#FFD700"
 GREEN = "#2ECC71"
 
-st.set_page_config(page_title="ICICI Attrition Sentinel", layout="wide")
+st.set_page_config(page_title="ICICI Attrition Predictor", layout="wide")
 
 # Custom CSS for ICICI Styling
 st.markdown(f"""
@@ -28,7 +28,7 @@ st.markdown(f"""
     [data-testid="stSidebar"] .st-emotion-cache-10trblm {{
         color: {WHITE};
     }}
-    h1, h2 {{ color: {ICICI_BLUE}; font-family: 'Arial'; font-weight: bold; }}
+    h1, h2 {{ color: {ICICI_BLUE}; font-family: 'Mulish Semibold'; font-weight: bold; }}
     h3 {{ color: {ICICI_CRIMSON}; }}
     .big-font {{ font-size: 80px !important; font-weight: bold; text-align: center; }}
     </style>
@@ -63,7 +63,7 @@ def load_and_model():
 df = load_and_model()
 
 # --- SIDEBAR ---
-st.sidebar.title("ICICI Sentinel")
+st.sidebar.title("Analysis Tools")
 page = st.sidebar.radio("Go To:", ["Zone wise turnover prediction", "Employee risk indicator"])
 
 # --- PAGE 1: ZONE WISE TURNOVER PREDICTION ---
