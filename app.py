@@ -88,15 +88,18 @@ elif page == "Employee risk indicator":
         if not user_data.empty:
             score = user_data['Risk_Score'].values[0]
             
-            # Risk Level Logic: Red (High), Yellow (Med), Green (Low)
+            # FIXED LOGIC: Correcting the variable assignments
             if score >= 75:
-                status, hex_color = "HIGH RISK", "#FF0000"
+                status = "HIGH RISK"
+                hex_color = "#FF0000" # Red
             elif score >= 40:
-                status, hex_color = "#FFCC00" # Yellow
                 status = "MEDIUM RISK"
+                hex_color = "#FFCC00" # Yellow
             else:
-                status, hex_color = "LOW RISK", "#008000"
+                status = "LOW RISK"
+                hex_color = "#008000" # Green
             
+            # Display Score & Indicator
             st.markdown(f"<p class='big-font' style='color: {hex_color};'>{score}%</p>", unsafe_allow_html=True)
             st.markdown(f"<h2 style='text-align: center; color: {hex_color};'>{status}</h2>", unsafe_allow_html=True)
             
@@ -123,6 +126,3 @@ elif page == "Employee risk indicator":
                     st.write("* **Nominate for internal reward and recognition programs.**")
         else:
             st.error("Employee ID not found in database.")
-
-
-            
