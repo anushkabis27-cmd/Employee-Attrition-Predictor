@@ -5,12 +5,22 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import LabelEncoder
 
 # ICICI Theme Colors & Custom CSS
-st.set_page_config(page_title="Attrition Predictor", layout="wide")
+st.set_page_config(page_title="Attrition Sentinel", layout="wide")
 
+# Updated CSS for ICICI Orange Sidebar and Blue Headings
 st.markdown("""
     <style>
     .main { background-color: #f4f7f9; }
-    .stSidebar { background-color: #003366; color: white; }
+    [data-testid="stSidebar"] {
+        background-color: #f37021;
+    }
+    [data-testid="stSidebar"] .st-emotion-cache-10trblm {
+        color: white;
+    }
+    .stSidebar [data-testid="stMarkdownContainer"] p {
+        color: white;
+        font-weight: bold;
+    }
     h1, h2, h3 { color: #003366; font-family: 'Arial'; }
     .stMetric { background-color: #ffffff; padding: 15px; border-radius: 10px; border-left: 5px solid #f37021; }
     .big-font { font-size: 80px !important; font-weight: bold; text-align: center; }
@@ -20,6 +30,7 @@ st.markdown("""
 # --- DATA ENGINE ---
 @st.cache_data
 def load_and_model():
+    # Referencing the file name verbatim as requested
     df = pd.read_csv('final_attrition_dataset_500_v4_lateral.csv')
     le = LabelEncoder()
     df['GRADE_ID'] = le.fit_transform(df['GRADE'])
@@ -29,11 +40,11 @@ def load_and_model():
     X = df[['AGE', 'TENURE_YRS', 'GRADE_ID', 'GROUP_ID', 'ZONE_ID']]
     y = df['ATTRITION']
     
-    # Adjusted Model: Prevents 0% by using 'min_samples_leaf'
+    # Random Forest with min_samples_leaf to ensure scores are not 0%
     rf = RandomForestClassifier(n_estimators=200, min_samples_leaf=8, random_state=42)
     rf.fit(X, y)
     
-    # Clipping probabilities so risk is never 0 or 100
+    # Clipping probabilities between 1.5% and 98.5%
     raw_probs = rf.predict_proba(X)[:, 1] * 100
     df['Risk_Score'] = np.clip(raw_probs, 1.5, 98.5).round(2)
     return df
@@ -41,7 +52,7 @@ def load_and_model():
 df = load_and_model()
 
 # --- SIDEBAR MENU ---
-st.sidebar.image("https://www.icicibank.com/assets/images/logo.png", width=200) # Placeholder for ICICI Logo
+# Logo removed as requested
 st.sidebar.title("Navigation")
 page = st.sidebar.radio("Go To:", ["Zone wise turnover prediction", "Employee risk indicator"])
 
@@ -61,6 +72,7 @@ if page == "Zone wise turnover prediction":
     for i, zone in enumerate(zones):
         with cols[i % 2]:
             st.subheader(f"📍 {zone} Zone")
+            # Applying orange gradient for visual consistency
             st.dataframe(report.loc[zone].rename("High Risk %").to_frame().style.background_gradient(cmap='Oranges'))
 
 # --- PAGE 2: EMPLOYEE RISK INDICATOR ---
@@ -68,7 +80,7 @@ elif page == "Employee risk indicator":
     st.title("👤 Employee Risk Indicator")
     st.markdown("<h3 style='color: #f37021;'>Predictive Attrition Individual Search</h3>", unsafe_allow_html=True)
     
-    emp_id = st.number_input("Enter Employee ID", min_value=0, step=1, help="Type the EMPID to generate report")
+    emp_id = st.number_input("Enter Employee ID", min_value=0, step=1)
     
     if emp_id:
         user_data = df[df['EMPID'] == emp_id]
@@ -76,15 +88,15 @@ elif page == "Employee risk indicator":
         if not user_data.empty:
             score = user_data['Risk_Score'].values[0]
             
-            # Risk Level Logic
+            # Risk Level Logic: Red (High), Yellow (Med), Green (Low)
             if score >= 75:
-                status, color, hex_color = "HIGH RISK", "Red", "#FF0000"
+                status, hex_color = "HIGH RISK", "#FF0000"
             elif score >= 40:
-                status, color, hex_color = "MEDIUM RISK", "Yellow", "#FFCC00"
+                status, hex_color = "#FFCC00" # Yellow
+                status = "MEDIUM RISK"
             else:
-                status, color, hex_color = "LOW RISK", "Green", "#008000"
+                status, hex_color = "LOW RISK", "#008000"
             
-            # Display Score & Indicator
             st.markdown(f"<p class='big-font' style='color: {hex_color};'>{score}%</p>", unsafe_allow_html=True)
             st.markdown(f"<h2 style='text-align: center; color: {hex_color};'>{status}</h2>", unsafe_allow_html=True)
             
@@ -93,27 +105,24 @@ elif page == "Employee risk indicator":
             col1, col2 = st.columns(2)
             with col1:
                 st.subheader("💡 Analysis Factors")
-                st.write(f"**Current Tenure:** {user_data['TENURE_YRS'].values[0]} Years")
-                st.write(f"**Current Grade:** {user_data['GRADE'].values[0]}")
-                st.write("* Model identifies specific volatility in this tenure-grade cohort.")
-                st.write("* Market benchmark for this age group indicates higher lateral movement.")
+                st.write(f"**Tenure:** {user_data['TENURE_YRS'].values[0]} Years")
+                st.write(f"**Grade:** {user_data['GRADE'].values[0]}")
+                st.write(f"**Age:** {user_data['AGE'].values[0]}")
+                st.write("* Model identifies specific volatility based on historical lateral movement trends.")
 
             with col2:
                 st.subheader("🚀 Actionables")
                 if status == "HIGH RISK":
-                    st.write("* **ER Intervention:** Immediate 'Stay Interview' required.")
-                    st.write("* **Comp Review:** Compare current CTC with market mid-point.")
-                    st.write("* **Role Enrichment:** Discuss lateral growth within the same group.")
+                    st.write("* **ER manager should contact and understand career aspirations.**")
+                    st.write("* **Evaluate for retention bonus or immediate role enrichment.**")
                 elif status == "MEDIUM RISK":
-                    st.write("* **Manager Feedback:** Discuss work-life balance in next review.")
-                    st.write("* **Skill Mapping:** Enroll in upcoming leadership training.")
+                    st.write("* **Schedule skip-level meeting to discuss growth path.**")
+                    st.write("* **Enroll in specialized leadership or skill-building modules.**")
                 else:
-                    st.write("* **Recognition:** Nominate for peer-to-peer appreciation.")
-                    st.write("* **Mentorship:** Assign as a buddy for new hires.")
+                    st.write("* **Continue standard performance tracking.**")
+                    st.write("* **Nominate for internal reward and recognition programs.**")
         else:
-            st.error("Employee ID not found.")
-    
-    
-    
-        
+            st.error("Employee ID not found in database.")
+
+
             
