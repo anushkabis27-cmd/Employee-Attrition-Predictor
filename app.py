@@ -9,7 +9,7 @@ st.set_page_config(page_title="ICICI Turnover Predictor", layout="wide")
 @st.cache_data
 def load_data():
     # Make sure this filename matches exactly what is in your GitHub repo
-    data = pd.read_excel("Attrition_Final_Production_v3.xlsx")
+    data = pd.read_excel("Attrition_Final_Production.xlsx")
     return data
 
 # This defines 'df' globally for the whole app
