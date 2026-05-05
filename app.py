@@ -182,7 +182,7 @@ elif st.session_state.page == 'Search':
                         st.write("• **Emergency Career Re-pathing**: Immediately explore internal mobility options across departments.")
                         st.write("• **Senior Leadership Recognition**: Personal acknowledgment from a BU/HR head to reinforce value.")
                     elif emp['Risk_Level'] == 'Medium':
-                        st.write("• **ER Manager Structured Connect**: 1:1 meeting to address team dynamics; findings recorded in iCare.")
+                        st.write("• **ER Manager Structured Connect**: 1:1 meeting to address team dynamics and findings to be recorded in KYP in iCare.")
                         st.write("• **OJP Re-energizer**: Offer rotation in a different business unit to reignite motivation.")
                         st.write("• **Personalized Recognition**: Specific, timely appreciation tied to actual contribution/impact.")
                     else:
