@@ -30,7 +30,7 @@ st.markdown(f"""
 # 2. Data Loading
 @st.cache_data
 def load_data():
-    data = pd.read_excel("Attrition_Final_Production_v6.xlsx")
+    data = pd.read_excel("Attrition_Final_Production_v5_Corrected.xlsx")
     data['EMPID'] = data['EMPID'].astype(str).str.zfill(6)
     return data
 
