@@ -16,7 +16,7 @@ RED = "#FF3131"
 YELLOW = "#FFD700"
 GREEN = "#2ECC71"
 
-st.set_page_config(page_title="ICICI Attrition Predictor", layout="wide")
+st.set_page_config(page_title="ICICI Attrition Sentinel v2.0", layout="wide")
 
 # Custom CSS for ICICI Styling
 st.markdown(f"""
@@ -28,7 +28,7 @@ st.markdown(f"""
     [data-testid="stSidebar"] .st-emotion-cache-10trblm {{
         color: {WHITE};
     }}
-    h1, h2 {{ color: {ICICI_BLUE}; font-family: 'Mulish Semibold'; font-weight: bold; }}
+    h1, h2 {{ color: {ICICI_BLUE}; font-family: 'Arial'; font-weight: bold; }}
     h3 {{ color: {ICICI_CRIMSON}; }}
     .big-font {{ font-size: 80px !important; font-weight: bold; text-align: center; }}
     </style>
@@ -36,26 +36,29 @@ st.markdown(f"""
 
 @st.cache_data
 def load_and_model():
-    # File name referenced verbatim
-    df = pd.read_csv('final_attrition_dataset_500_v4_lateral.csv')
-    le = LabelEncoder()
-    df['GRADE_ID'] = le.fit_transform(df['GRADE'])
-    df['GROUP_ID'] = le.fit_transform(df['MAIN_GROUP'])
-    df['ZONE_ID'] = le.fit_transform(df['ZONE'])
+    # Loading the new Excel file
+    file_name = 'Attrition_Predictive_Analysis_v2_0.xlsx'
+    df = pd.read_excel(file_name, sheet_name='Dataset_10k_Final')
     
-    X = df[['AGE', 'TENURE_YRS', 'GRADE_ID', 'GROUP_ID', 'ZONE_ID']]
+    # Mapping new columns to internal logic
+    # New columns: 'Age', 'Tenure (Yrs)', 'Grade', 'Home State' (used as Zone proxy)
+    le = LabelEncoder()
+    df['GRADE_ID'] = le.fit_transform(df['Grade'].astype(str))
+    df['ZONE_ID'] = le.fit_transform(df['Home State'].astype(str))
+    
+    X = df[['Age', 'Tenure (Yrs)', 'GRADE_ID', 'ZONE_ID']]
     y = df['ATTRITION']
     
-    # Model uses min_samples_leaf to prevent 0% attrition scores
-    rf = RandomForestClassifier(n_estimators=200, min_samples_leaf=8, random_state=42)
+    # Random Forest Model
+    rf = RandomForestClassifier(n_estimators=100, min_samples_leaf=10, random_state=42)
     rf.fit(X, y)
     
+    # Clipping probabilities to avoid 0%
     raw_probs = rf.predict_proba(X)[:, 1] * 100
-    # Ensuring risk is never 0
-    df['Risk_Score'] = np.clip(raw_probs, 1.5, 98.5).round(2)
+    df['Risk_Score_AI'] = np.clip(raw_probs, 1.5, 98.5).round(2)
     
-    # Define Risk Categories
-    df['Risk_Category'] = df['Risk_Score'].apply(
+    # Define Risk Categories based on AI Score
+    df['Risk_Category'] = df['Risk_Score_AI'].apply(
         lambda x: 'High' if x >= 75 else ('Medium' if x >= 40 else 'Low')
     )
     return df
@@ -63,23 +66,24 @@ def load_and_model():
 df = load_and_model()
 
 # --- SIDEBAR ---
-st.sidebar.title("Analysis Tools")
+st.sidebar.title("ICICI Sentinel v2.0")
 page = st.sidebar.radio("Go To:", ["Zone wise turnover prediction", "Employee risk indicator"])
 
 # --- PAGE 1: ZONE WISE TURNOVER PREDICTION ---
 if page == "Zone wise turnover prediction":
     st.title("🏙️ Zone wise turnover prediction")
-    st.markdown("### Regional Risk Distribution Analysis")
+    st.markdown("### Home State Risk Distribution Analysis")
     
-    zones = ["North", "East", "West", "South"]
+    # Using 'Home State' as the categorical split for the dashboard
+    states = df['Home State'].unique()[:4] # Displaying top 4 states for the dashboard view
     rows = [st.columns(2), st.columns(2)]
     
-    for idx, zone in enumerate(zones):
+    for idx, state in enumerate(states):
         with rows[idx // 2][idx % 2]:
-            st.subheader(f"📍 {zone} Zone")
+            st.subheader(f"📍 {state}")
             
-            zone_df = df[df['ZONE'] == zone]
-            counts = zone_df['Risk_Category'].value_counts(normalize=True) * 100
+            state_df = df[df['Home State'] == state]
+            counts = state_df['Risk_Category'].value_counts(normalize=True) * 100
             
             plot_data = pd.Series({'High': 0.0, 'Medium': 0.0, 'Low': 0.0})
             plot_data.update(counts)
@@ -114,16 +118,9 @@ elif page == "Employee risk indicator":
     if emp_id:
         user_data = df[df['EMPID'] == emp_id]
         if not user_data.empty:
-            score = user_data['Risk_Score'].values[0]
+            score = user_data['Risk_Score_AI'].values[0]
             cat = user_data['Risk_Category'].values[0]
-            
-            # Colour logic for Individual Score
-            if cat == 'High':
-                hex_color = RED
-            elif cat == 'Medium':
-                hex_color = YELLOW
-            else:
-                hex_color = GREEN
+            hex_color = RED if cat == 'High' else (YELLOW if cat == 'Medium' else GREEN)
             
             st.markdown(f"<p class='big-font' style='color: {hex_color};'>{score}%</p>", unsafe_allow_html=True)
             st.markdown(f"<h2 style='text-align: center; color: {hex_color};'>{cat.upper()} RISK</h2>", unsafe_allow_html=True)
@@ -133,10 +130,10 @@ elif page == "Employee risk indicator":
             c1, c2 = st.columns(2)
             with c1:
                 st.subheader("💡 Analysis Factors")
-                st.write(f"**Tenure:** {user_data['TENURE_YRS'].values[0]} Years")
-                st.write(f"**Grade:** {user_data['GRADE'].values[0]}")
-                st.write(f"**Age:** {user_data['AGE'].values[0]}")
-                st.write(f"**Group:** {user_data['MAIN_GROUP'].values[0]}")
+                st.write(f"**Tenure:** {user_data['Tenure (Yrs)'].values[0]} Years")
+                st.write(f"**Grade:** {user_data['Grade'].values[0]}")
+                st.write(f"**Age:** {user_data['Age'].values[0]}")
+                st.write(f"**Home State:** {user_data['Home State'].values[0]}")
             
             with c2:
                 st.subheader("🚀 Actionables")
@@ -148,5 +145,4 @@ elif page == "Employee risk indicator":
                 else:
                     st.write("* **Nominate for internal reward programs.**")
         else:
-            st.error("Employee ID not found.")
-       
+            st.error("Employee ID not found in current dataset.")
