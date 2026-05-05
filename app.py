@@ -91,7 +91,7 @@ if st.session_state.page == 'Overview':
                 z_count = len(current_data[current_data['ZONE'] == zone])
                 z_share = (z_count / z_total * 100) if z_total > 0 else 0
                 
-                # TITLES: Zone name outside, Count(Share) inside box
+                # TITLES: Zone name outside, Count: {z_count} | Share: {z_share:.1f}%</div, unsafe_allow_html=True) inside box
                 st.write(f"### {zone}") # Left aligned big title
                 st.markdown(f'<div class="orange-header-box">{z_count} ({z_share:.1f}%)</div>', unsafe_allow_html=True)
                 
