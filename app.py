@@ -1,151 +1,143 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.preprocessing import LabelEncoder
+import plotly.express as px
 
-# ICICI Brand Color Palette
-ICICI_CRIMSON = "#B02A30"
-ICICI_ORANGE = "#F99D27"
-ICICI_BLUE = "#005B75"
-WHITE = "#FFFFFF"
+# 1. Page Configuration & ICICI Branding
+st.set_page_config(page_title="ICICI Turnover Predictor", layout="wide")
 
-# Risk Colors
-RED = "#FF3131"
-YELLOW = "#FFD700"
-GREEN = "#2ECC71"
+# Brand Color Palette
+ICICI_ORANGE = "#E77817"
+ICICI_NAVY = "#05325C"
+BACKGROUND_WHITE = "#FFFFFF"
 
-st.set_page_config(page_title="ICICI Attrition Sentinel", layout="wide")
-
-# Custom CSS for ICICI Styling
+# Custom CSS for UI Design
 st.markdown(f"""
     <style>
-    .main {{ background-color: #F4F7F9; }}
-    [data-testid="stSidebar"] {{
-        background-color: {ICICI_ORANGE};
+    .main {{ background-color: {BACKGROUND_WHITE}; }}
+    h1, h2, h3 {{ color: {ICICI_NAVY}; font-family: 'Arial'; }}
+    .stMetric {{ 
+        background-color: #F8F9FA; 
+        padding: 20px; 
+        border-radius: 10px; 
+        border-top: 5px solid {ICICI_ORANGE}; 
+        box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
     }}
-    [data-testid="stSidebar"] .st-emotion-cache-10trblm {{
-        color: {WHITE};
+    /* Top Toggle Navigation Style */
+    .nav-container {{
+        display: flex;
+        justify-content: center;
+        gap: 50px;
+        margin-bottom: 20px;
     }}
-    h1, h2 {{ color: {ICICI_BLUE}; font-family: 'Arial'; font-weight: bold; }}
-    h3 {{ color: {ICICI_CRIMSON}; }}
-    .big-font {{ font-size: 80px !important; font-weight: bold; text-align: center; }}
+    .nav-link {{
+        font-size: 20px;
+        font-weight: bold;
+        text-decoration: none;
+        color: {ICICI_NAVY};
+        border-bottom: 3px solid transparent;
+        transition: 0.3s;
+    }}
+    .nav-link:hover {{ border-bottom: 3px solid {ICICI_ORANGE}; }}
     </style>
-    """, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
+# 2. Load Processed Data
 @st.cache_data
-def load_and_model():
-    # File name referenced verbatim
-    df = pd.read_csv('final_attrition_dataset_500_v4_lateral.csv')
-    le = LabelEncoder()
-    df['GRADE_ID'] = le.fit_transform(df['GRADE'])
-    df['GROUP_ID'] = le.fit_transform(df['MAIN_GROUP'])
-    df['ZONE_ID'] = le.fit_transform(df['ZONE'])
-    
-    X = df[['AGE', 'TENURE_YRS', 'GRADE_ID', 'GROUP_ID', 'ZONE_ID']]
-    y = df['ATTRITION']
-    
-    # Model uses min_samples_leaf to prevent 0% attrition scores
-    rf = RandomForestClassifier(n_estimators=200, min_samples_leaf=8, random_state=42)
-    rf.fit(X, y)
-    
-    raw_probs = rf.predict_proba(X)[:, 1] * 100
-    # Ensuring risk is never 0
-    df['Risk_Score'] = np.clip(raw_probs, 1.5, 98.5).round(2)
-    
-    # Define Risk Categories
-    df['Risk_Category'] = df['Risk_Score'].apply(
-        lambda x: 'High' if x >= 75 else ('Medium' if x >= 40 else 'Low')
-    )
-    return df
+def load_data():
+    # Use the file generated in Colab with ZONE and MAIN_GROUP
+    return pd.read_excel("Attrition_Final_Production.xlsx")
 
-df = load_and_model()
+df = load_data()
 
-# --- SIDEBAR ---
-st.sidebar.title("ICICI Sentinel")
-page = st.sidebar.radio("Go To:", ["Zone wise turnover prediction", "Employee risk indicator"])
+# 3. Top-Level Toggle Navigation (State Management)
+if 'page' not in st.session_state:
+    st.session_state.page = 'Overview'
 
-# --- PAGE 1: ZONE WISE TURNOVER PREDICTION ---
-if page == "Zone wise turnover prediction":
-    st.title("🏙️ Zone wise turnover prediction")
-    st.markdown("### Regional Risk Distribution Analysis")
-    
-    zones = ["North", "East", "West", "South"]
-    rows = [st.columns(2), st.columns(2)]
-    
-    for idx, zone in enumerate(zones):
-        with rows[idx // 2][idx % 2]:
-            st.subheader(f"📍 {zone} Zone")
-            
-            zone_df = df[df['ZONE'] == zone]
-            counts = zone_df['Risk_Category'].value_counts(normalize=True) * 100
-            
-            plot_data = pd.Series({'High': 0.0, 'Medium': 0.0, 'Low': 0.0})
-            plot_data.update(counts)
-            
-            fig, ax = plt.subplots(figsize=(6, 4))
-            categories = ['High', 'Medium', 'Low']
-            values = [plot_data['High'], plot_data['Medium'], plot_data['Low']]
-            colors = [RED, YELLOW, GREEN]
-            
-            bars = ax.bar(categories, values, color=colors, edgecolor=ICICI_BLUE, linewidth=1.5)
-            
-            ax.set_facecolor('#F4F7F9')
-            fig.patch.set_facecolor('#F4F7F9')
-            ax.set_ylabel('Percentage of Employees (%)', color=ICICI_BLUE, fontweight='bold')
-            ax.set_ylim(0, 100)
-            
-            for bar in bars:
-                height = bar.get_height()
-                ax.text(bar.get_x() + bar.get_width()/2., height + 2,
-                        f'{height:.1f}%', ha='center', va='bottom', 
-                        fontweight='bold', color=ICICI_BLUE)
+col1, col2 = st.columns([1,1])
+with col1:
+    if st.button("Zonal Overview Dashboard", use_container_width=True):
+        st.session_state.page = 'Overview'
+with col2:
+    if st.button("Individual Employee Search", use_container_width=True):
+        st.session_state.page = 'Search'
 
-            plt.tight_layout()
-            st.pyplot(fig)
+st.divider()
 
-# --- PAGE 2: EMPLOYEE RISK INDICATOR ---
-elif page == "Employee risk indicator":
-    st.title("👤 Employee risk indicator")
+# --- PAGE 1: ZONAL OVERVIEW ---
+if st.session_state.page == 'Overview':
+    st.title("Organizational Risk Summary")
     
-    emp_id = st.number_input("Enter Employee ID", min_value=0, step=1)
+    # Filter for Active High Risk only
+    active_high_risk = df[(df['Status'] == 'Active') & (df['Risk_Level'] == 'High')]
     
-    if emp_id:
-        user_data = df[df['EMPID'] == emp_id]
-        if not user_data.empty:
-            score = user_data['Risk_Score'].values[0]
-            cat = user_data['Risk_Category'].values[0]
+    # 4 Separate Zonal Boxes
+    zones = ['North', 'South', 'East', 'West']
+    z_cols = st.columns(4)
+    for i, zone in enumerate(zones):
+        count = len(active_high_risk[active_high_risk['ZONE'] == zone])
+        z_cols[i].metric(label=f"{zone} Zone", value=count, delta="Active High Risk")
+
+    st.write("### Department-wise Risk Concentration")
+    
+    # Bar Charts in 2x2 Grid
+    chart_rows = st.columns(2)
+    for i, zone in enumerate(zones):
+        with chart_rows[i % 2]:
+            z_data = active_high_risk[active_high_risk['ZONE'] == zone]
+            dept_counts = z_data.groupby('MAIN_GROUP').size().reset_index(name='Count')
             
-            # Colour logic for Individual Score
-            if cat == 'High':
-                hex_color = RED
-            elif cat == 'Medium':
-                hex_color = YELLOW
+            fig = px.bar(dept_counts, x='MAIN_GROUP', y='Count', 
+                         title=f"{zone} Zone: High Risk by Department",
+                         color_discrete_sequence=[ICICI_ORANGE],
+                         labels={'MAIN_GROUP': 'Department', 'Count': 'High Risk Count'})
+            fig.update_layout(plot_bgcolor='white')
+            st.plotly_chart(fig, use_container_width=True)
+
+# --- PAGE 2: EMPLOYEE SEARCH ---
+elif st.session_state.page == 'Search':
+    st.title("Employee Attrition Predictor")
+    
+    search_id = st.text_input("Search by 6-Digit Employee ID:", placeholder="Enter EMPID...")
+    
+    if search_id:
+        # Search the 12,000 record database
+        result = df[df['EMPID'].astype(str) == search_id.strip()]
+        
+        if not result.empty:
+            emp = result.iloc[0]
+            
+            if emp['Status'] == 'Inactive':
+                st.error(f"Employee {search_id} has already exited the organization.")
             else:
-                hex_color = GREEN
-            
-            st.markdown(f"<p class='big-font' style='color: {hex_color};'>{score}%</p>", unsafe_allow_html=True)
-            st.markdown(f"<h2 style='text-align: center; color: {hex_color};'>{cat.upper()} RISK</h2>", unsafe_allow_html=True)
-            
-            st.divider()
-            
-            c1, c2 = st.columns(2)
-            with c1:
-                st.subheader("💡 Analysis Factors")
-                st.write(f"**Tenure:** {user_data['TENURE_YRS'].values[0]} Years")
-                st.write(f"**Grade:** {user_data['GRADE'].values[0]}")
-                st.write(f"**Age:** {user_data['AGE'].values[0]}")
-                st.write(f"**Group:** {user_data['MAIN_GROUP'].values[0]}")
-            
-            with c2:
-                st.subheader("🚀 Actionables")
-                if cat == 'High':
-                    st.write("* **ER manager should contact and understand career aspirations.**")
-                    st.write("* **Evaluate for immediate retention or role enrichment.**")
-                elif cat == 'Medium':
-                    st.write("* **Schedule skip-level meeting to discuss growth.**")
-                else:
-                    st.write("* **Nominate for internal reward programs.**")
+                # Main Risk Output (Large Font)
+                st.markdown(f"<p style='text-align:center; font-size:100px; color:{ICICI_ORANGE}; font-weight:bold; margin-bottom:0;'>{emp['Attrition_Risk_Percentage']}%</p>", unsafe_allow_html=True)
+                st.markdown(f"<h2 style='text-align:center; color:{ICICI_NAVY}; margin-top:0;'>{emp['Risk_Level']} RISK LEVEL</h2>", unsafe_allow_html=True)
+                
+                st.divider()
+                
+                # Employee Details below
+                d1, d2, d3, d4 = st.columns(4)
+                d1.write(f"**Grade:** {emp['GRADE']}")
+                d2.write(f"**Tenure:** {emp['TENURE_YRS']} Years")
+                d3.write(f"**Age:** {emp['AGE']}")
+                d4.write(f"**Current Zone:** {emp['ZONE']}")
+                
+                # Insights and Actionables in Bullet Points
+                st.divider()
+                col_i, col_a = st.columns(2)
+                with col_i:
+                    st.subheader("Model Insights")
+                    st.write(f"* Falls in the critical **{emp['Tenure_Bracket']}** tenure bracket.")
+                    st.write(f"* Assigned to high-risk grade **{emp['GRADE']}**.")
+                    if emp['Age_Tenure_Factor'] > 100:
+                        st.write("* Age-Tenure interaction indicates high lateral marketability.")
+                
+                with col_a:
+                    st.subheader("Actionable Steps")
+                    st.write("* **Retention Conversation**: Conduct a 1-on-1 before the June/July cycle.")
+                    st.write(f"* **Career Pathing**: Discuss progression for the next {emp['GRADE']} promotion.")
+                    if emp['Dist_Bin'] == 3:
+                        st.write("* **Relocation Support**: Address potential stress for 'Outstation' status (>200km).")
         else:
-            st.error("Employee ID not found.")
+            st.warning("No active employee found with that ID.")
+   
