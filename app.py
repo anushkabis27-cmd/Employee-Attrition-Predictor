@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-# 1. Page Configuration & Brand Styles
+# 1. Page Configuration
 st.set_page_config(page_title="ICICI Turnover Predictor", layout="wide")
 
 # Brand Colors
@@ -12,48 +12,28 @@ RED = "#FF0000"
 YELLOW = "#FFD700"
 GREEN = "#008000"
 
-# Custom CSS for Sidebar, Quadrants, and Headers
+# Custom CSS
 st.markdown(f"""
     <style>
-    /* Sidebar styling */
-    [data-testid="stSidebar"] {{
-        background-color: white;
-        border-right: 2px solid {ICICI_ORANGE};
+    [data-testid="stSidebar"] {{ background-color: white; border-right: 2px solid {ICICI_ORANGE}; }}
+    .orange-header-box {{
+        background-color: {ICICI_ORANGE}; color: white; padding: 5px 15px;
+        border-radius: 15px; font-weight: bold; display: inline-block; margin-bottom: 15px;
     }}
-    /* Zone name boxes: Orange Rounded Rectangles */
-    .zone-box {{
-        background-color: {ICICI_ORANGE};
-        color: white;
-        padding: 10px 20px;
-        border-radius: 25px;
-        font-weight: bold;
-        display: inline-block;
-        margin-bottom: 10px;
-    }}
-    /* Stat boxes */
-    .stat-box {{
-        background-color: #F8F9FA;
-        border: 1px solid #dee2e6;
-        padding: 15px;
-        text-align: center;
-        border-radius: 10px;
-    }}
-    /* Sidebar Button styling */
-    div.stButton > button {{
-        background-color: {ICICI_ORANGE};
-        color: white;
-        border-radius: 5px;
-        font-weight: bold;
-        border: none;
-    }}
+    .stat-box {{ background-color: #F8F9FA; border: 1px solid #dee2e6; padding: 15px; text-align: center; border-radius: 10px; }}
+    div.stButton > button {{ background-color: {ICICI_ORANGE}; color: white; border-radius: 5px; font-weight: bold; }}
+    /* Color Specific Buttons for Legend */
+    div.stButton > button[key="btn_high"] {{ background-color: {RED} !important; }}
+    div.stButton > button[key="btn_med"] {{ background-color: {YELLOW} !important; color: black !important; }}
+    div.stButton > button[key="btn_low"] {{ background-color: {GREEN} !important; }}
     </style>
 """, unsafe_allow_html=True)
 
 # 2. Data Loading
 @st.cache_data
 def load_data():
-    # Ensure the file exists in the GitHub root
-    data = pd.read_excel("Attrition_Final_Production_v5_Corrected.xlsx")
+    # Use the finalized production file
+    data = pd.read_excel("Attrition_Final_Production_v6_Corrected.xlsx")
     data['EMPID'] = data['EMPID'].astype(str).str.zfill(6)
     return data
 
@@ -61,30 +41,27 @@ df = load_data()
 
 # 3. Sidebar Navigation
 with st.sidebar:
-    st.image("https://www.icicibank.com/assets/images/icici-logo.png", width=150) # Optional logo placeholder
     st.write("### Navigation")
     if st.button("ZONE WISE RISK SUMMARY", key="nav_overview", use_container_width=True):
         st.session_state.page = 'Overview'
     if st.button("EMPLOYEE SEARCH", key="nav_search", use_container_width=True):
         st.session_state.page = 'Search'
 
-# Navigation State Management
+# Init State
 if 'page' not in st.session_state: st.session_state.page = 'Overview'
 if 'risk_filter' not in st.session_state: st.session_state.risk_filter = 'High'
 
 # --- PAGE 1: OVERVIEW ---
 if st.session_state.page == 'Overview':
     st.title("Zone Wise Risk Summary")
-    
-    # Dashboard Header
     st.subheader("High Risk Segment Details")
     
     active_df = df[df['Status'] == 'Active']
     high_risk_active = active_df[active_df['Risk_Level'] == 'High']
     
-    # 5-Box Dashboard Row
+    # Dashboard Row
     d1, d2, d3, d4, d5 = st.columns(5)
-    with d1: st.markdown(f'<div class="stat-box"><b>Total High Risk</b><br><span style="font-size:22px; color:{RED};">{len(high_risk_active)}</span></div>', unsafe_allow_html=True)
+    with d1: st.markdown(f'<div class="stat-box"><b>Total High Risk</b><br><span style="color:{RED}; font-size:22px;">{len(high_risk_active)}</span></div>', unsafe_allow_html=True)
     with d2: st.markdown(f'<div class="stat-box"><b>Risk Percentage</b><br><span style="font-size:22px;">{(len(high_risk_active)/len(active_df)*100):.1f}%</span></div>', unsafe_allow_html=True)
     with d3: st.markdown(f'<div class="stat-box"><b>Avg Age</b><br><span style="font-size:22px;">27.4</span></div>', unsafe_allow_html=True)
     with d4: st.markdown(f'<div class="stat-box"><b>Avg Tenure</b><br><span style="font-size:22px;">4.1Y</span></div>', unsafe_allow_html=True)
@@ -95,22 +72,12 @@ if st.session_state.page == 'Overview':
 
     main_col, legend_col = st.columns([5, 1.2])
 
-    # Right Side Legend
     with legend_col:
         st.write("**Risk Category**")
-        if st.button("High Risk", key="btn_high", use_container_width=True):
-            st.session_state.risk_filter = 'High'
-        st.markdown(f'<style>div[data-testid="stButton"] button[key="btn_high"] {{ background-color: {RED} !important; }}</style>', unsafe_allow_html=True)
-        
-        if st.button("Medium Risk", key="btn_med", use_container_width=True):
-            st.session_state.risk_filter = 'Medium'
-        st.markdown(f'<style>div[data-testid="stButton"] button[key="btn_med"] {{ background-color: {YELLOW} !important; color: black !important; }}</style>', unsafe_allow_html=True)
-        
-        if st.button("Low Risk", key="btn_low", use_container_width=True):
-            st.session_state.risk_filter = 'Low'
-        st.markdown(f'<style>div[data-testid="stButton"] button[key="btn_low"] {{ background-color: {GREEN} !important; }}</style>', unsafe_allow_html=True)
+        if st.button("High Risk", key="btn_high", use_container_width=True): st.session_state.risk_filter = 'High'
+        if st.button("Medium Risk", key="btn_med", use_container_width=True): st.session_state.risk_filter = 'Medium'
+        if st.button("Low Risk", key="btn_low", use_container_width=True): st.session_state.risk_filter = 'Low'
 
-    # Quadrant Analysis
     with main_col:
         r1c1, r1c2 = st.columns(2)
         r2c1, r2c2 = st.columns(2)
@@ -124,17 +91,16 @@ if st.session_state.page == 'Overview':
                 z_count = len(current_data[current_data['ZONE'] == zone])
                 z_share = (z_count / z_total * 100) if z_total > 0 else 0
                 
-                # Orange Rounded Rectangle Header
-                st.markdown(f'<div class="zone-box">{zone} | Count: {z_count} | Share: {z_share:.1f}%</div>', unsafe_allow_html=True)
+                # TITLES: Zone name outside, Count(Share) inside box
+                st.write(f"### {zone}") # Left aligned big title
+                st.markdown(f'<div class="orange-header-box">{z_count} ({z_share:.1f}%)</div>', unsafe_allow_html=True)
                 
-                # Dynamic Bar Chart
+                # Chart
                 dept_data = current_data[current_data['ZONE'] == zone].groupby('MAIN_GROUP').size().reset_index(name='Count')
-                dept_data['%'] = (dept_data['Count'] / z_count * 100).round(1) if z_count > 0 else 0
-                
                 chart_color = RED if st.session_state.risk_filter == 'High' else (YELLOW if st.session_state.risk_filter == 'Medium' else GREEN)
                 
-                fig = px.bar(dept_data, x='MAIN_GROUP', y='Count', text='%', color_discrete_sequence=[chart_color])
-                fig.update_traces(width=0.3, texttemplate='%{text}%', textposition='outside')
+                fig = px.bar(dept_data, x='MAIN_GROUP', y='Count', text_auto=True, color_discrete_sequence=[chart_color])
+                fig.update_traces(width=0.3)
                 fig.update_layout(height=280, margin=dict(l=10, r=10, t=10, b=10), xaxis_title="")
                 st.plotly_chart(fig, use_container_width=True)
 
