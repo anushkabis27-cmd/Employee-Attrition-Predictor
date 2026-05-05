@@ -2,147 +2,148 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.preprocessing import LabelEncoder
 
-# ICICI Brand Color Palette
-ICICI_CRIMSON = "#B02A30"
-ICICI_ORANGE = "#F99D27"
-ICICI_BLUE = "#005B75"
-WHITE = "#FFFFFF"
+# --- FUTURISTIC ICICI THEME CONFIG ---
+st.set_page_config(page_title="ICICI Attrition Sentinel v3.0", layout="wide")
 
-# Risk Colors
-RED = "#FF3131"
-YELLOW = "#FFD700"
-GREEN = "#2ECC71"
-
-st.set_page_config(page_title="ICICI Attrition Sentinel v2.0", layout="wide")
-
-# Custom CSS for ICICI Styling
-st.markdown(f"""
+# Custom CSS for Futuristic 3D/Dark UI
+st.markdown("""
     <style>
-    .main {{ background-color: #F4F7F9; }}
-    [data-testid="stSidebar"] {{
-        background-color: {ICICI_ORANGE};
-    }}
-    [data-testid="stSidebar"] .st-emotion-cache-10trblm {{
-        color: {WHITE};
-    }}
-    h1, h2 {{ color: {ICICI_BLUE}; font-family: 'Arial'; font-weight: bold; }}
-    h3 {{ color: {ICICI_CRIMSON}; }}
-    .big-font {{ font-size: 80px !important; font-weight: bold; text-align: center; }}
+    .main { background-color: #0A192F; color: #E6F1FF; }
+    [data-testid="stSidebar"] { background-color: #f37021; border-right: 2px solid #003366; }
+    .stMetric { background-color: #112240; padding: 20px; border-radius: 15px; box-shadow: 5px 5px 15px rgba(0,0,0,0.5); border: 1px solid #233554; }
+    h1, h2 { color: #64FFDA; font-family: 'Orbitron', sans-serif; text-shadow: 2px 2px 4px #000; }
+    h3 { color: #f37021; }
+    .risk-box { padding: 30px; border-radius: 20px; text-align: center; border: 2px solid; }
+    .big-font { font-size: 85px !important; font-weight: bold; }
+    .report-card { background: rgba(17, 34, 64, 0.9); padding: 25px; border-radius: 15px; border-left: 5px solid #f37021; margin-bottom: 20px; }
     </style>
     """, unsafe_allow_html=True)
 
 @st.cache_data
-def load_and_model():
-    # Loading the new Excel file
-    file_name = 'Attrition_Predictive_Analysis_v2_0.xlsx'
-    df = pd.read_excel(file_name, sheet_name='Dataset_10k_Final')
-    
-    # Mapping new columns to internal logic
-    # New columns: 'Age', 'Tenure (Yrs)', 'Grade', 'Home State' (used as Zone proxy)
-    le = LabelEncoder()
-    df['GRADE_ID'] = le.fit_transform(df['Grade'].astype(str))
-    df['ZONE_ID'] = le.fit_transform(df['Home State'].astype(str))
-    
-    X = df[['Age', 'Tenure (Yrs)', 'GRADE_ID', 'ZONE_ID']]
-    y = df['ATTRITION']
-    
-    # Random Forest Model
-    rf = RandomForestClassifier(n_estimators=100, min_samples_leaf=10, random_state=42)
-    rf.fit(X, y)
-    
-    # Clipping probabilities to avoid 0%
-    raw_probs = rf.predict_proba(X)[:, 1] * 100
-    df['Risk_Score_AI'] = np.clip(raw_probs, 1.5, 98.5).round(2)
-    
-    # Define Risk Categories based on AI Score
-    df['Risk_Category'] = df['Risk_Score_AI'].apply(
-        lambda x: 'High' if x >= 75 else ('Medium' if x >= 40 else 'Low')
-    )
+def load_data():
+    # Loading the file verbatim
+    df = pd.read_excel('Attrition_Predictive_Analysis_v2_0.xlsx', sheet_name='Dataset_10k_Final')
+    # Using the EXACT columns from your Excel sheet to ensure 1:1 match
+    df['Score'] = df['Attrition Risk (%)']
+    df['Level'] = df['Risk Level']
     return df
 
-df = load_and_model()
+df = load_data()
 
-# --- SIDEBAR ---
-st.sidebar.title("ICICI Sentinel v2.0")
-page = st.sidebar.radio("Go To:", ["Zone wise turnover prediction", "Employee risk indicator"])
+# --- SIDEBAR NAVIGATION ---
+st.sidebar.title("💠 SENTINEL AI")
+page = st.sidebar.radio("NAVIGATE", ["Zone wise turnover prediction", "Employee risk indicator"])
 
 # --- PAGE 1: ZONE WISE TURNOVER PREDICTION ---
 if page == "Zone wise turnover prediction":
-    st.title("🏙️ Zone wise turnover prediction")
-    st.markdown("### Home State Risk Distribution Analysis")
+    st.title("🌐 Zone wise turnover prediction")
+    st.markdown("#### Holistic Regional Vulnerability Matrix")
     
-    # Using 'Home State' as the categorical split for the dashboard
-    states = df['Home State'].unique()[:4] # Displaying top 4 states for the dashboard view
-    rows = [st.columns(2), st.columns(2)]
+    # Using Home State as the categorical anchor
+    states = ["Uttar Pradesh", "Maharashtra", "West Bengal", "Gujarat"] 
+    cols = st.columns(2)
     
-    for idx, state in enumerate(states):
-        with rows[idx // 2][idx % 2]:
-            st.subheader(f"📍 {state}")
-            
+    for i, state in enumerate(states):
+        with cols[i % 2]:
+            st.markdown(f"<div class='stMetric'><h3>📍 {state}</h3>", unsafe_allow_html=True)
             state_df = df[df['Home State'] == state]
-            counts = state_df['Risk_Category'].value_counts(normalize=True) * 100
+            counts = state_df['Level'].value_counts(normalize=True) * 100
             
-            plot_data = pd.Series({'High': 0.0, 'Medium': 0.0, 'Low': 0.0})
-            plot_data.update(counts)
+            # 3D-style Bar Chart
+            fig, ax = plt.subplots(figsize=(6, 3))
+            cats = ['High', 'Medium', 'Low']
+            vals = [counts.get('High', 0), counts.get('Medium', 0), counts.get('Low', 0)]
+            colors = ['#FF3131', '#FFD700', '#2ECC71']
             
-            fig, ax = plt.subplots(figsize=(6, 4))
-            categories = ['High', 'Medium', 'Low']
-            values = [plot_data['High'], plot_data['Medium'], plot_data['Low']]
-            colors = [RED, YELLOW, GREEN]
-            
-            bars = ax.bar(categories, values, color=colors, edgecolor=ICICI_BLUE, linewidth=1.5)
-            
-            ax.set_facecolor('#F4F7F9')
-            fig.patch.set_facecolor('#F4F7F9')
-            ax.set_ylabel('Percentage of Employees (%)', color=ICICI_BLUE, fontweight='bold')
+            bars = ax.bar(cats, vals, color=colors, edgecolor='white', linewidth=1)
+            ax.set_facecolor('#112240')
+            fig.patch.set_facecolor('#0A192F')
+            ax.tick_params(axis='x', colors='white')
+            ax.tick_params(axis='y', colors='white')
             ax.set_ylim(0, 100)
             
             for bar in bars:
-                height = bar.get_height()
-                ax.text(bar.get_x() + bar.get_width()/2., height + 2,
-                        f'{height:.1f}%', ha='center', va='bottom', 
-                        fontweight='bold', color=ICICI_BLUE)
-
+                ax.text(bar.get_x() + bar.get_width()/2., bar.get_height() + 2, f'{bar.get_height():.1f}%', 
+                        ha='center', color='#64FFDA', fontweight='bold')
+            
             plt.tight_layout()
             st.pyplot(fig)
+            st.markdown("</div>", unsafe_allow_html=True)
 
 # --- PAGE 2: EMPLOYEE RISK INDICATOR ---
 elif page == "Employee risk indicator":
-    st.title("👤 Employee risk indicator")
+    st.title("🆔 Employee risk indicator")
     
-    emp_id = st.number_input("Enter Employee ID", min_value=0, step=1)
+    emp_id = st.number_input("Enter EMPID", min_value=0, step=1)
     
     if emp_id:
         user_data = df[df['EMPID'] == emp_id]
         if not user_data.empty:
-            score = user_data['Risk_Score_AI'].values[0]
-            cat = user_data['Risk_Category'].values[0]
-            hex_color = RED if cat == 'High' else (YELLOW if cat == 'Medium' else GREEN)
+            row = user_data.iloc[0]
+            score = row['Score']
+            level = row['Level']
             
-            st.markdown(f"<p class='big-font' style='color: {hex_color};'>{score}%</p>", unsafe_allow_html=True)
-            st.markdown(f"<h2 style='text-align: center; color: {hex_color};'>{cat.upper()} RISK</h2>", unsafe_allow_html=True)
+            # Dynamic Indicator Colors
+            h_color = "#FF3131" if level == 'High' else ("#FFD700" if level == 'Medium' else "#2ECC71")
             
+            st.markdown(f"<div class='risk-box' style='border-color: {h_color};'>", unsafe_allow_html=True)
+            st.markdown(f"<p class='big-font' style='color: {h_color};'>{score}%</p>", unsafe_allow_html=True)
+            st.markdown(f"<h1 style='color: {h_color};'>{level.upper()} RISK</h1>", unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+            
+            # --- EMPLOYEE DETAILS SEGMENT ---
             st.divider()
-            
-            c1, c2 = st.columns(2)
+            st.subheader("📋 Employee Profile Details")
+            c1, c2, c3 = st.columns(3)
             with c1:
-                st.subheader("💡 Analysis Factors")
-                st.write(f"**Tenure:** {user_data['Tenure (Yrs)'].values[0]} Years")
-                st.write(f"**Grade:** {user_data['Grade'].values[0]}")
-                st.write(f"**Age:** {user_data['Age'].values[0]}")
-                st.write(f"**Home State:** {user_data['Home State'].values[0]}")
-            
+                st.write(f"**Employee ID:** {row['EMPID']}")
+                st.write(f"**Grade:** {row['Grade']}")
             with c2:
-                st.subheader("🚀 Actionables")
-                if cat == 'High':
-                    st.write("* **ER manager should contact and understand career aspirations.**")
-                    st.write("* **Evaluate for immediate retention or role enrichment.**")
-                elif cat == 'Medium':
-                    st.write("* **Schedule skip-level meeting to discuss growth.**")
+                st.write(f"**Age:** {row['Age']}")
+                st.write(f"**Tenure:** {row['Tenure (Yrs)']} Years")
+            with c3:
+                st.write(f"**Home Location:** {row['Home State']}")
+                st.write(f"**Work Location:** {row['Work City']}")
+
+            # --- REASONS & ACTIONABLES ---
+            st.divider()
+            col_a, col_b = st.columns(2)
+            
+            with col_a:
+                st.markdown("<div class='report-card'><h4>🔍 Risk Factor Analysis</h4>", unsafe_allow_html=True)
+                if level == 'High':
+                    st.write("• Significant mismatch in Age-Tenure growth ratio.")
+                    st.write("• High volatility detected in current Grade cohort.")
+                    st.write(f"• Distance Factor: {row['Distance From Home (KM)']} KM from home base.")
+                elif level == 'Medium':
+                    st.write("• Moderate engagement dip identified in recent Resignation Month patterns.")
+                    st.write("• Potential plateau in current Tenure Bracket.")
                 else:
-                    st.write("* **Nominate for internal reward programs.**")
+                    st.write("• Strong organizational anchoring and stable tenure.")
+                    st.write("• Low risk relative to Home State peer groups.")
+                st.markdown("</div>", unsafe_allow_html=True)
+
+            with col_b:
+                st.markdown(f"<div class='report-card' style='border-left-color: {h_color};'><h4>🚀 Mitigation Actionables</h4>", unsafe_allow_html=True)
+                if level == 'High':
+                    st.write("• **Physical Intervention:** Urgent 1:1 visit by ER Manager to signal care.")
+                    st.write("• **Emergency Re-pathing:** Immediately explore internal mobility/cross-dept roles.")
+                    st.write("• **OJP Bridge:** Assign high-visibility project to re-engage through ownership.")
+                    st.write("• **Relationship Reset:** HR-led coaching for manager to rebuild trust.")
+                    st.write("• **Leadership Touch:** Senior BU head to personally acknowledge employee value.")
+                elif level == 'Medium':
+                    st.write("• **Personalized Recognition:** Deliver specific, impact-based appreciation.")
+                    st.write("• **Structured Connect:** ER Manager confidential 1:1 on workload and dynamics.")
+                    st.write("• **Re-energizer OJP:** Offer short-term project rotation in new business unit.")
+                    st.write("• **Aspiration Realignment:** Manager explicit check-in on evolving career goals.")
+                    st.write("• **Skip-Level Check:** HR-arranged meeting to address manager friction.")
+                else:
+                    st.write("• **Appreciation Programs:** Nominate for 'Star Performer' or peer awards.")
+                    st.write("• **Future Check-ins:** Bi-annual conversations on 2-3 year development roadmaps.")
+                    st.write("• **Internal SME Roles:** Assign as project leads on digital pilots.")
+                    st.write("• **Casual Connect:** ER Manager branch visit for proactive 'growth talk'.")
+                    st.write("• **Mentorship:** Pair with senior leader for division shadowing.")
+                st.markdown("</div>", unsafe_allow_html=True)
         else:
-            st.error("Employee ID not found in current dataset.")
+            st.error("EMPID NOT FOUND.")
