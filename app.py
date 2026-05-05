@@ -2,142 +2,65 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-# 1. Page Configuration & ICICI Branding
-st.set_page_config(page_title="ICICI Turnover Predictor", layout="wide")
-
-# Brand Color Palette
+# ICICI Branding
 ICICI_ORANGE = "#E77817"
 ICICI_NAVY = "#05325C"
-BACKGROUND_WHITE = "#FFFFFF"
 
-# Custom CSS for UI Design
-st.markdown(f"""
-    <style>
-    .main {{ background-color: {BACKGROUND_WHITE}; }}
-    h1, h2, h3 {{ color: {ICICI_NAVY}; font-family: 'Arial'; }}
-    .stMetric {{ 
-        background-color: #F8F9FA; 
-        padding: 20px; 
-        border-radius: 10px; 
-        border-top: 5px solid {ICICI_ORANGE}; 
-        box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
-    }}
-    /* Top Toggle Navigation Style */
-    .nav-container {{
-        display: flex;
-        justify-content: center;
-        gap: 50px;
-        margin-bottom: 20px;
-    }}
-    .nav-link {{
-        font-size: 20px;
-        font-weight: bold;
-        text-decoration: none;
-        color: {ICICI_NAVY};
-        border-bottom: 3px solid transparent;
-        transition: 0.3s;
-    }}
-    .nav-link:hover {{ border-bottom: 3px solid {ICICI_ORANGE}; }}
-    </style>
-""", unsafe_allow_html=True)
-
-# 2. Load Processed Data
-@st.cache_data
-def load_data():
-    # Use the file generated in Colab with ZONE and MAIN_GROUP
-    return pd.read_excel("Attrition_Final_Production.xlsx")
-
-df = load_data()
-
-# 3. Top-Level Toggle Navigation (State Management)
-if 'page' not in st.session_state:
-    st.session_state.page = 'Overview'
-
-col1, col2 = st.columns([1,1])
-with col1:
-    if st.button("Zonal Overview Dashboard", use_container_width=True):
-        st.session_state.page = 'Overview'
-with col2:
-    if st.button("Individual Employee Search", use_container_width=True):
-        st.session_state.page = 'Search'
-
-st.divider()
-
-# --- PAGE 1: ZONAL OVERVIEW ---
+# --- PAGE 1: ZONE-WISE RISK SUMMARY (QUADRANTS) ---
 if st.session_state.page == 'Overview':
-    st.title("Organizational Risk Summary")
+    st.title("Zone-wise Risk Summary")
     
-    # Filter for Active High Risk only
-    active_high_risk = df[(df['Status'] == 'Active') & (df['Risk_Level'] == 'High')]
+    # Data Preparation
+    active_df = df[df['Status'] == 'Active']
+    high_risk_active = active_df[df['Risk_Level'] == 'High']
     
-    # 4 Separate Zonal Boxes
-    zones = ['North', 'South', 'East', 'West']
-    z_cols = st.columns(4)
-    for i, zone in enumerate(zones):
-        count = len(active_high_risk[active_high_risk['ZONE'] == zone])
-        z_cols[i].metric(label=f"{zone} Zone", value=count, delta="Active High Risk")
-
-    st.write("### Department-wise Risk Concentration")
+    # Create the Quadrant Grid (2 Rows, 2 Columns)
+    row1_col1, row1_col2 = st.columns(2)
+    row2_col1, row2_col2 = st.columns(2)
     
-    # Bar Charts in 2x2 Grid
-    chart_rows = st.columns(2)
-    for i, zone in enumerate(zones):
-        with chart_rows[i % 2]:
-            z_data = active_high_risk[active_high_risk['ZONE'] == zone]
-            dept_counts = z_data.groupby('MAIN_GROUP').size().reset_index(name='Count')
+    quadrants = [
+        {"zone": "North", "col": row1_col1},
+        {"zone": "South", "col": row1_col2},
+        {"zone": "East", "col": row2_col1},
+        {"zone": "West", "col": row2_col2}
+    ]
+    
+    for quad in quadrants:
+        zone = quad["zone"]
+        with quad["col"]:
+            # 1. Zonal Metrics
+            z_total = len(active_df[active_df['ZONE'] == zone])
+            z_high_risk = len(high_risk_active[high_risk_active['ZONE'] == zone])
+            z_pct = (z_high_risk / z_total * 100) if z_total > 0 else 0
             
-            fig = px.bar(dept_counts, x='MAIN_GROUP', y='Count', 
-                         title=f"{zone} Zone: High Risk by Department",
-                         color_discrete_sequence=[ICICI_ORANGE],
-                         labels={'MAIN_GROUP': 'Department', 'Count': 'High Risk Count'})
-            fig.update_layout(plot_bgcolor='white')
+            # Display Metric inside the quadrant
+            st.subheader(zone)
+            st.metric(label="High Risk Count", value=z_high_risk, delta=f"{z_pct:.1f}% Risk Rate", delta_color="inverse")
+            
+            # 2. Thin Bar Chart with Percentages
+            z_dept_data = high_risk_active[high_risk_active['ZONE'] == zone]
+            dept_summary = z_dept_data.groupby('MAIN_GROUP').size().reset_index(name='Count')
+            
+            # Calculate % share of high risk within the zone for the chart tooltip
+            dept_summary['Percentage'] = (dept_summary['Count'] / z_high_risk * 100).round(1)
+            
+            fig = px.bar(
+                dept_summary, 
+                x='MAIN_GROUP', 
+                y='Count',
+                text='Percentage', # Shows percentage on top/inside bar
+                hover_data={'Percentage': ':.1f%'}, # Interaction shows % on click/hover
+                color_discrete_sequence=[ICICI_ORANGE]
+            )
+            
+            # Styling for "Thin" bars and readable layout
+            fig.update_traces(width=0.4, texttemplate='%{text}%', textposition='outside')
+            fig.update_layout(
+                height=300, 
+                margin=dict(l=20, r=20, t=30, b=20),
+                xaxis_title="", 
+                yaxis_title="Count",
+                plot_bgcolor='rgba(0,0,0,0)'
+            )
             st.plotly_chart(fig, use_container_width=True)
-
-# --- PAGE 2: EMPLOYEE SEARCH ---
-elif st.session_state.page == 'Search':
-    st.title("Employee Attrition Predictor")
-    
-    search_id = st.text_input("Search by 6-Digit Employee ID:", placeholder="Enter EMPID...")
-    
-    if search_id:
-        # Search the 12,000 record database
-        result = df[df['EMPID'].astype(str) == search_id.strip()]
-        
-        if not result.empty:
-            emp = result.iloc[0]
-            
-            if emp['Status'] == 'Inactive':
-                st.error(f"Employee {search_id} has already exited the organization.")
-            else:
-                # Main Risk Output (Large Font)
-                st.markdown(f"<p style='text-align:center; font-size:100px; color:{ICICI_ORANGE}; font-weight:bold; margin-bottom:0;'>{emp['Attrition_Risk_Percentage']}%</p>", unsafe_allow_html=True)
-                st.markdown(f"<h2 style='text-align:center; color:{ICICI_NAVY}; margin-top:0;'>{emp['Risk_Level']} RISK LEVEL</h2>", unsafe_allow_html=True)
-                
-                st.divider()
-                
-                # Employee Details below
-                d1, d2, d3, d4 = st.columns(4)
-                d1.write(f"**Grade:** {emp['GRADE']}")
-                d2.write(f"**Tenure:** {emp['TENURE_YRS']} Years")
-                d3.write(f"**Age:** {emp['AGE']}")
-                d4.write(f"**Current Zone:** {emp['ZONE']}")
-                
-                # Insights and Actionables in Bullet Points
-                st.divider()
-                col_i, col_a = st.columns(2)
-                with col_i:
-                    st.subheader("Model Insights")
-                    st.write(f"* Falls in the critical **{emp['Tenure_Bracket']}** tenure bracket.")
-                    st.write(f"* Assigned to high-risk grade **{emp['GRADE']}**.")
-                    if emp['Age_Tenure_Factor'] > 100:
-                        st.write("* Age-Tenure interaction indicates high lateral marketability.")
-                
-                with col_a:
-                    st.subheader("Actionable Steps")
-                    st.write("* **Retention Conversation**: Conduct a 1-on-1 before the June/July cycle.")
-                    st.write(f"* **Career Pathing**: Discuss progression for the next {emp['GRADE']} promotion.")
-                    if emp['Dist_Bin'] == 3:
-                        st.write("* **Relocation Support**: Address potential stress for 'Outstation' status (>200km).")
-        else:
-            st.warning("No active employee found with that ID.")
-   
+            st.divider()
