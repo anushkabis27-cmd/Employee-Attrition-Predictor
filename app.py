@@ -21,7 +21,7 @@ st.markdown("""
 @st.cache_data
 def load_data():
     # Loading the corrected file verbatim
-    file_path = 'Attrition_Predictive_Model_v5_Corrected.xlsx'
+    file_path = 'Attrition_Final_Production_v5_Corrected.xlsx'
     df = pd.read_excel(file_path, sheet_name='Dataset_10k_Final')
     
     # Filter for ACTIVE employees only
