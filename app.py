@@ -37,7 +37,7 @@ st.markdown(f"""
 @st.cache_data
 def load_data():
     # Load v7 which contains city/state specific locations
-    data = pd.read_excel("Attrition_Final_Production_v7.xlsx")
+    data = pd.read_excel("Attrition_Final_Production_v5_Corrected.xlsx")
     data['EMPID'] = data['EMPID'].astype(str).str.zfill(6)
     return data
 
