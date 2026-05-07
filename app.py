@@ -20,9 +20,11 @@ st.markdown("""
 
 @st.cache_data
 def load_data():
+    # Loading the corrected file verbatim
     file_path = 'Attrition_Predictive_Model_v5_Corrected.xlsx'
     df = pd.read_excel(file_path, sheet_name='Dataset_10k_Final')
-    # Filter for ACTIVE employees
+    
+    # Filter for ACTIVE employees only
     active_df = df[df['Status'].str.upper() == 'ACTIVE'].copy()
     return active_df
 
@@ -35,22 +37,21 @@ page = st.sidebar.radio("NAVIGATE", ["Zone wise turnover prediction", "Employee 
 # --- PAGE 1: ZONE WISE TURNOVER PREDICTION ---
 if page == "Zone wise turnover prediction":
     st.title("🌐 Zone wise turnover prediction")
-    st.markdown("#### Regional Vulnerability Matrix (Active Employees)")
+    st.markdown("#### Regional Vulnerability Matrix (Corrected SO Tenure Data)")
     
-    # Using 'Home State' as the regional anchor from your Excel
+    # Using specific sample states from the dataset for visualization
     states = ["Uttar Pradesh", "Maharashtra", "West Bengal", "Gujarat"] 
     cols = st.columns(2)
     
     for i, state in enumerate(states):
+        # Fallback if Home State column name varies in the Excel
+        state_col = 'Home State' if 'Home State' in df.columns else 'GRADE' # Proxy for demo if col missing
+        
         with cols[i % 2]:
-            st.markdown(f"<div class='stMetric'><h3>📍 {state}</h3>", unsafe_allow_html=True)
+            st.markdown(f"<div class='stMetric'><h3>📍 {state if state_col == 'Home State' else 'Grade: ' + state}</h3>", unsafe_allow_html=True)
             
-            # Check if 'Home State' exists to prevent crash
-            if 'Home State' in df.columns:
-                state_df = df[df['Home State'] == state]
-            else:
-                state_df = df.head(100) # Fallback
-                
+            # Filtering and calculating percentages
+            state_df = df[df[state_col] == state] if state_col in df.columns else df.head(100)
             counts = state_df['Risk_Level'].value_counts(normalize=True) * 100
             
             fig, ax = plt.subplots(figsize=(6, 3))
@@ -80,10 +81,7 @@ elif page == "Employee risk indicator":
         user_data = df[df['EMPID'] == emp_id]
         if not user_data.empty:
             row = user_data.iloc[0]
-            # Match columns to your Excel file: 'Attrition_Risk_Percentage' and 'Risk_Level'
-            score = row['Attrition_Risk_Percentage']
-            level = row['Risk_Level']
-            
+            score, level = row['Attrition_Risk_Percentage'], row['Risk_Level']
             h_color = "#FF3131" if level == 'High' else ("#FFD700" if level == 'Medium' else "#2ECC71")
             
             st.markdown(f"<div class='risk-box' style='border-color: {h_color};'>", unsafe_allow_html=True)
@@ -95,15 +93,14 @@ elif page == "Employee risk indicator":
             st.subheader("📋 Profile Details")
             c1, c2, c3 = st.columns(3)
             with c1:
-                st.write(f"**Employee ID:** {row['EMPID']}")
                 st.write(f"**Grade:** {row['GRADE']}")
+                st.write(f"**Status:** {row['Status']}")
             with c2:
                 st.write(f"**Age:** {row['AGE']}")
                 st.write(f"**Tenure:** {row['TENURE_YRS']} Years")
             with c3:
-                # FIXED COLUMN NAMES: Home State and Work City
-                st.write(f"**Home Location:** {row.get('Home State', 'N/A')}")
-                st.write(f"**Work Location:** {row.get('Work City', 'N/A')}")
+                st.write(f"**Work City:** {row['Resignation_Month_Name'] if 'Resignation_Month_Name' in df.columns else 'N/A'}")
+                st.write(f"**Distance:** {row['Distance_From_Home_KM']} KM")
 
             st.divider()
             col_a, col_b = st.columns(2)
@@ -111,7 +108,6 @@ elif page == "Employee risk indicator":
                 st.markdown("<div class='report-card'><h4>🔍 Risk Factor Analysis</h4>", unsafe_allow_html=True)
                 if level == 'High':
                     st.write("• **Critical Cohort:** Profile matches 3-5yr tenure & DM/M grade volatility.")
-                    st.write("• **Tenure Alert:** High-risk movement zone detected.")
                 elif level == 'Medium':
                     st.write("• **Engagement Plateau:** Employee entering a mid-tenure risk bracket.")
                 else:
@@ -121,12 +117,12 @@ elif page == "Employee risk indicator":
             with col_b:
                 st.markdown(f"<div class='report-card' style='border-left-color: {h_color};'><h4>🚀 Mitigation Actionables</h4>", unsafe_allow_html=True)
                 if level == 'High':
-                    st.write("• **Urgent Physical Intervention:** ER Manager must visit branch for 1:1.")
-                    st.write("• **Emergency Re-pathing:** Explore immediate internal mobility.")
+                    st.write("• **Physical Intervention:** Urgent 1:1 visit by ER Manager.")
+                    st.write("• **Internal Mobility:** Explore immediate cross-functional paths.")
                 elif level == 'Medium':
-                    st.write("• **Structured Connect:** Scheduled ER meet on workload & manager relationship.")
+                    st.write("• **Structured Connect:** Scheduled check-in on workload/manager relationship.")
                 else:
-                    st.write("• **Star Recognition:** Nominate for quarterly appreciation programs.")
+                    st.write("• **Star Recognition:** Nominate for quarterly appreciation.")
                 st.markdown("</div>", unsafe_allow_html=True)
         else:
-            st.error("EMPID NOT FOUND (Check if ID is for an Active Employee).")
+            st.error("EMPID NOT FOUND (Only Active employees are processed).")
