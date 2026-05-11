@@ -1,5 +1,5 @@
 import streamlit as st
-import pd as pd
+import pandas as pd  # <--- Fixed the import typo here
 import numpy as np
 import matplotlib.pyplot as plt
 import os
@@ -48,9 +48,6 @@ if st.session_state.page == "Cover":
             /* Subtitle - Size 72 */
             .cover-subtitle {{ text-align: center; color: {ICICI_ORANGE}; font-size: 72px; margin-bottom: 60px; font-weight: 800; line-height: 1.1; padding: 0 5%; font-family: 'Arial', sans-serif; }}
             
-            /* Box Title Styling - Georgia Semi-Bold */
-            .box-title {{ font-family: 'Georgia', serif; font-weight: 600; font-size: 26px; margin-bottom: 10px; }}
-            
             div.stButton > button {{
                 background-color: {ICICI_MAROON} !important;
                 color: white !important;
@@ -66,6 +63,8 @@ if st.session_state.page == "Cover":
                 align-items: center !important;
                 justify-content: center !important;
                 text-align: center !important;
+                font-family: 'Georgia', serif; /* Requested stylish font */
+                font-weight: 600;
             }}
             div.stButton > button:hover {{
                 transform: translateY(-10px) !important;
@@ -85,6 +84,7 @@ if st.session_state.page == "Cover":
     with col_logo:
         st.image(LOGO_PATH, width=300)
     with col_slogan:
+        # Bold Slogan as requested
         st.markdown(f"<div style='text-align: right; color: {ICICI_ORANGE}; font-size: 26px; font-weight: 900; margin-top: 25px;'><b>Predict. Prevent. Retain</b></div>", unsafe_allow_html=True)
 
     st.markdown("<h1 class='cover-title'>iRetain</h1>", unsafe_allow_html=True)
@@ -123,7 +123,7 @@ else:
         st.session_state.page = selection
         st.rerun()
 
-    # --- PAGE 1: ZONE WISE TURNOVER PREDICTION ---
+    # --- PAGE 1: ZONE-WISE TURNOVER PREDICTION ---
     if st.session_state.page == "Zone wise turnover prediction":
         st.title("🏙️ Zone-wise Turnover Prediction")
         st.markdown(f"<h3 style='color: {ICICI_ORANGE};'>Regional Vulnerability Dashboard</h3>", unsafe_allow_html=True)
