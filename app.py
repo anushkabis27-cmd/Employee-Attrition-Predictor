@@ -49,7 +49,7 @@ if st.session_state.page == "Cover":
             .main {{ color: white; font-family: 'Segoe UI', sans-serif; }}
             
             .cover-title {{ text-align: center; color: white; font-size: 130px; font-weight: 900; margin-top: 20px; letter-spacing: -3px; line-height: 1; font-family: 'Trebuchet MS', sans-serif; }}
-            .cover-subtitle {{ text-align: center; color: white; font-size: 70px; margin-bottom: 70px; font-weight: 800; line-height: 1.2; padding: 0 10%; }}
+            .cover-subtitle {{ text-align: center; color: white; font-size: 90px; margin-bottom: 70px; font-weight: 800; line-height: 1.2; padding: 0 10%; }}
             
             div.stButton > button {{
                 background-color: {ICICI_MAROON} !important;
