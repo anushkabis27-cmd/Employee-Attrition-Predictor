@@ -66,7 +66,7 @@ if st.session_state.page == "Cover":
                 align-items: center !important;
                 justify-content: center !important;
                 text-align: center !important;
-                font-family: 'Verdana', sans-serif !important;
+                font-family: 'Georgia', sans-serif !important;
                 font-weight: bold !important;
                 font-size: 20px !important;
             }}
