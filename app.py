@@ -7,8 +7,9 @@ import os
 st.set_page_config(page_title="iRetain | ICICI Bank", layout="wide", initial_sidebar_state="collapsed")
 
 # Official Colors
-ICICI_ORANGE = "#f37021"
+ICICI_ORANGE = "#F99D27"
 ICICI_MAROON = "#8b191d"
+Blue = "#005B75"
 
 # --- DATA LOADER ---
 @st.cache_data
@@ -54,7 +55,7 @@ if st.session_state.page == "Cover":
         </div>
         """, unsafe_allow_html=True)
 
-    st.markdown("<h1 style='text-align: center; color: white; font-size: 130px; font-weight: 900; margin-top: 20px; font-family: Trebuchet MS;'>iRetain</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center; color:#005B75 ; font-size: 80px; font-weight: 900; margin-top: 20px; font-family: Trebuchet MS;'>iRetain</h1>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: center; color: white; font-size: 38px; font-weight: 800; padding: 0 10%;'>The Intelligent Workforce Turnover Risk Analyzer</p>", unsafe_allow_html=True)
     
     # Custom CSS for Maroon Buttons/Cards
