@@ -1,5 +1,5 @@
 import streamlit as st
-import pandas as pd
+import pd as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import os
@@ -13,8 +13,7 @@ ICICI_MAROON = "#8b191d"
 ICICI_BLUE = "#003366"
 
 # --- LOGO LOGIC ---
-LOGO_FILE = "icici-bank.jpg"
-# Using a relative path for local and absolute for fallback to ensure visibility
+LOGO_FILE = "icicibanklogo.png"
 LOGO_PATH = LOGO_FILE if os.path.exists(LOGO_FILE) else "https://www.icicibank.com/assets/images/logo.png"
 
 # --- DATA LOADER ---
@@ -43,11 +42,14 @@ if st.session_state.page == "Cover":
             [data-testid="collapsedControl"] {{display: none;}}
             .stApp {{ background-color: white !important; }}
             
-            .cover-title {{ text-align: center; color: {ICICI_BLUE}; font-size: 130px; font-weight: 900; margin-top: 20px; letter-spacing: -3px; line-height: 1; font-family: 'Trebuchet MS', sans-serif; }}
-            .cover-subtitle {{ text-align: center; color: {ICICI_ORANGE}; font-size: 44px; margin-bottom: 70px; font-weight: 800; line-height: 1.2; padding: 0 10%; }}
+            /* iRetain Title - Size 120 */
+            .cover-title {{ text-align: center; color: {ICICI_BLUE}; font-size: 120px; font-weight: 900; margin-top: 10px; letter-spacing: -3px; line-height: 1.1; font-family: 'Trebuchet MS', sans-serif; }}
             
-            /* Box Title Styling */
-            .box-title {{ font-family: 'Georgia', serif; font-weight: 600; font-size: 24px; margin-bottom: 10px; }}
+            /* Subtitle - Size 72 */
+            .cover-subtitle {{ text-align: center; color: {ICICI_ORANGE}; font-size: 72px; margin-bottom: 60px; font-weight: 800; line-height: 1.1; padding: 0 5%; font-family: 'Arial', sans-serif; }}
+            
+            /* Box Title Styling - Georgia Semi-Bold */
+            .box-title {{ font-family: 'Georgia', serif; font-weight: 600; font-size: 26px; margin-bottom: 10px; }}
             
             div.stButton > button {{
                 background-color: {ICICI_MAROON} !important;
@@ -55,7 +57,7 @@ if st.session_state.page == "Cover":
                 border: none !important;
                 padding: 40px 20px !important;
                 border-radius: 15px !important;
-                height: 320px !important; /* Fixed height for same size */
+                height: 320px !important;
                 width: 100% !important;
                 box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important;
                 transition: all 0.3s ease !important;
@@ -68,7 +70,6 @@ if st.session_state.page == "Cover":
             div.stButton > button:hover {{
                 transform: translateY(-10px) !important;
                 box-shadow: 0 15px 30px rgba(0,0,0,0.2) !important;
-                opacity: 0.9;
             }}
         </style>
     """, unsafe_allow_html=True)
@@ -79,19 +80,18 @@ else:
 
 # 1. COVER PAGE
 if st.session_state.page == "Cover":
-    # Header with Logo
+    # Header with Logo and Bold Slogan
     col_logo, col_slogan = st.columns([1, 1])
     with col_logo:
-        st.image(LOGO_PATH, width=280)
+        st.image(LOGO_PATH, width=300)
     with col_slogan:
-        st.markdown(f"<div style='text-align: right; color: {ICICI_ORANGE}; font-size: 24px; font-weight: 600; margin-top: 20px;'>Predict. Prevent. Retain</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='text-align: right; color: {ICICI_ORANGE}; font-size: 26px; font-weight: 900; margin-top: 25px;'><b>Predict. Prevent. Retain</b></div>", unsafe_allow_html=True)
 
     st.markdown("<h1 class='cover-title'>iRetain</h1>", unsafe_allow_html=True)
     st.markdown("<p class='cover-subtitle'>The Intelligent Workforce Turnover Risk Analyzer</p>", unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns(3)
     
-    # Using markdown headers inside buttons via helper text to maintain Georgia font
     with col1:
         if st.button("ZONE-WISE RISK SUMMARY\n\nAn overview of Turnover Risk across 4 zones"):
             st.session_state.page = "Zone wise turnover prediction"
@@ -144,7 +144,7 @@ else:
                 if zone in report.index:
                     st.dataframe(report.loc[zone].rename("High Risk %").to_frame().style.background_gradient(cmap='Oranges'))
                 else:
-                    st.info(f"No data currently available for {zone} Zone.")
+                    st.info(f"No data available for {zone} Zone.")
 
     # --- PAGE 2: EMPLOYEE RISK INDICATOR ---
     elif st.session_state.page == "Employee risk indicator":
