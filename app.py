@@ -42,11 +42,11 @@ if st.session_state.page == "Cover":
             [data-testid="collapsedControl"] {{display: none;}}
             .stApp {{ background-color: white !important; }}
             
-            /* iRetain Title - Size 120 */
-            .cover-title {{ text-align: center; color: {ICICI_BLUE}; font-size: 120px; font-weight: 900; margin-top: 10px; letter-spacing: -3px; line-height: 1.1; font-family: 'Trebuchet MS', sans-serif; }}
+            /* iRetain Title - Size 900 */
+            .cover-title {{ text-align: center; color: {ICICI_BLUE}; font-size: 400px; font-weight: 900; margin-top: 10px; letter-spacing: -3px; line-height: 1.1; font-family: 'Trebuchet MS', sans-serif; }}
             
-            /* Subtitle - Size 72 */
-            .cover-subtitle {{ text-align: center; color: {ICICI_ORANGE}; font-size: 72px; margin-bottom: 60px; font-weight: 800; line-height: 1.1; padding: 0 5%; font-family: 'Arial', sans-serif; }}
+            /* Subtitle - Size 250 */
+            .cover-subtitle {{ text-align: center; color: {ICICI_ORANGE}; font-size: 250px; margin-bottom: 60px; font-weight: 800; line-height: 1.1; padding: 0 5%; font-family: 'Georgia', sans-serif; }}
             
             div.stButton > button {{
                 background-color: {ICICI_MAROON} !important;
