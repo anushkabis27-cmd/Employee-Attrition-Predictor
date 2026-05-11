@@ -7,15 +7,15 @@ import os
 # --- iRetain CONFIG ---
 st.set_page_config(page_title="iRetain | ICICI Bank", layout="wide", initial_sidebar_state="collapsed")
 
-# Official ICICI Colors
+# Official Colors
 ICICI_ORANGE = "#f37021"
 ICICI_MAROON = "#8b191d"
+ICICI_BLUE = "#003366"
 
 # --- LOGO LOGIC ---
-# Using your specific filename; fallback to web URL if local file is missing
 LOGO_FILE = "icici-bank.jpg"
-WEB_LOGO = "https://www.icicibank.com/assets/images/logo.png"
-LOGO_PATH = LOGO_FILE if os.path.exists(LOGO_FILE) else WEB_LOGO
+# Using a relative path for local and absolute for fallback to ensure visibility
+LOGO_PATH = LOGO_FILE if os.path.exists(LOGO_FILE) else "https://www.icicibank.com/assets/images/logo.png"
 
 # --- DATA LOADER ---
 @st.cache_data
@@ -26,54 +26,49 @@ def load_data():
         st.stop()
     df = pd.read_excel(file_path, sheet_name=0)
     df.columns = df.columns.str.strip()
-    
-    # Map Risk_Score for Page 1 and Page 2 logic
     if 'Risk_Score' not in df.columns:
         df['Risk_Score'] = df.get('Attrition_Risk_Percentage', df.get('Attrition Risk (%)', 0))
-    
     return df[df['Status'].str.upper() == 'ACTIVE'].copy()
 
 df = load_data()
 
-# --- INITIALIZE NAVIGATION STATE ---
 if 'page' not in st.session_state:
     st.session_state.page = "Cover"
 
-# --- CSS FOR UI STYLING & SIDEBAR SUPPRESSION ---
+# --- CSS FOR UI STYLING ---
 if st.session_state.page == "Cover":
     st.markdown(f"""
         <style>
             [data-testid="stSidebar"] {{display: none;}}
             [data-testid="collapsedControl"] {{display: none;}}
-            .stApp {{ background-color: {ICICI_ORANGE} !important; }}
-            .main {{ color: white; font-family: 'Segoe UI', sans-serif; }}
+            .stApp {{ background-color: white !important; }}
             
-            .cover-title {{ text-align: center; color: white; font-size: 130px; font-weight: 900; margin-top: 20px; letter-spacing: -3px; line-height: 1; font-family: 'Trebuchet MS', sans-serif; }}
-            .cover-subtitle {{ text-align: center; color: white; font-size: 90px; margin-bottom: 70px; font-weight: 800; line-height: 1.2; padding: 0 10%; }}
+            .cover-title {{ text-align: center; color: {ICICI_BLUE}; font-size: 130px; font-weight: 900; margin-top: 20px; letter-spacing: -3px; line-height: 1; font-family: 'Trebuchet MS', sans-serif; }}
+            .cover-subtitle {{ text-align: center; color: {ICICI_ORANGE}; font-size: 44px; margin-bottom: 70px; font-weight: 800; line-height: 1.2; padding: 0 10%; }}
+            
+            /* Box Title Styling */
+            .box-title {{ font-family: 'Georgia', serif; font-weight: 600; font-size: 24px; margin-bottom: 10px; }}
             
             div.stButton > button {{
                 background-color: {ICICI_MAROON} !important;
                 color: white !important;
-                border: 2px solid rgba(255,255,255,0.2) !important;
+                border: none !important;
                 padding: 40px 20px !important;
                 border-radius: 15px !important;
-                height: 300px !important;
+                height: 320px !important; /* Fixed height for same size */
                 width: 100% !important;
-                box-shadow: 0 10px 25px rgba(0,0,0,0.3) !important;
+                box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important;
                 transition: all 0.3s ease !important;
                 display: flex !important;
                 flex-direction: column !important;
                 align-items: center !important;
                 justify-content: center !important;
                 text-align: center !important;
-                font-family: 'Georgia', sans-serif !important;
-                font-weight: bold !important;
-                font-size: 20px !important;
             }}
             div.stButton > button:hover {{
-                transform: translateY(-12px) !important;
-                box-shadow: 0 20px 40px rgba(0,0,0,0.5) !important;
-                border: 2px solid white !important;
+                transform: translateY(-10px) !important;
+                box-shadow: 0 15px 30px rgba(0,0,0,0.2) !important;
+                opacity: 0.9;
             }}
         </style>
     """, unsafe_allow_html=True)
@@ -84,18 +79,19 @@ else:
 
 # 1. COVER PAGE
 if st.session_state.page == "Cover":
-    st.markdown(f"""
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 20px 40px;">
-            <img src="{LOGO_PATH}" width="240">
-            <div style="color: white; font-size: 24px; font-weight: 600; font-family: 'Georgia', serif;">Predict. Prevent. Retain</div>
-        </div>
-        """, unsafe_allow_html=True)
+    # Header with Logo
+    col_logo, col_slogan = st.columns([1, 1])
+    with col_logo:
+        st.image(LOGO_PATH, width=280)
+    with col_slogan:
+        st.markdown(f"<div style='text-align: right; color: {ICICI_ORANGE}; font-size: 24px; font-weight: 600; margin-top: 20px;'>Predict. Prevent. Retain</div>", unsafe_allow_html=True)
 
     st.markdown("<h1 class='cover-title'>iRetain</h1>", unsafe_allow_html=True)
-    st.markdown("<p class='cover-subtitle'><b>The Intelligent Workforce Turnover Risk Analyzer</b></p>", unsafe_allow_html=True)
+    st.markdown("<p class='cover-subtitle'>The Intelligent Workforce Turnover Risk Analyzer</p>", unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns(3)
     
+    # Using markdown headers inside buttons via helper text to maintain Georgia font
     with col1:
         if st.button("ZONE-WISE RISK SUMMARY\n\nAn overview of Turnover Risk across 4 zones"):
             st.session_state.page = "Zone wise turnover prediction"
@@ -130,7 +126,7 @@ else:
     # --- PAGE 1: ZONE WISE TURNOVER PREDICTION ---
     if st.session_state.page == "Zone wise turnover prediction":
         st.title("🏙️ Zone-wise Turnover Prediction")
-        st.markdown("<h3 style='color: #f37021;'>Regional Vulnerability Dashboard</h3>", unsafe_allow_html=True)
+        st.markdown(f"<h3 style='color: {ICICI_ORANGE};'>Regional Vulnerability Dashboard</h3>", unsafe_allow_html=True)
         
         df['Is_High_Risk'] = df['Risk_Score'] >= 75
         zone_col = 'ZONE' if 'ZONE' in df.columns else 'Zone'
@@ -153,7 +149,7 @@ else:
     # --- PAGE 2: EMPLOYEE RISK INDICATOR ---
     elif st.session_state.page == "Employee risk indicator":
         st.title("👤 Employee Risk Indicator")
-        st.markdown("<h3 style='color: #f37021;'>Predictive Attrition Individual Search</h3>", unsafe_allow_html=True)
+        st.markdown(f"<h3 style='color: {ICICI_ORANGE};'>Predictive Attrition Individual Search</h3>", unsafe_allow_html=True)
         
         emp_id = st.number_input("Enter Employee ID", min_value=0, step=1)
         
@@ -161,7 +157,7 @@ else:
             user_data = df[df['EMPID'] == emp_id]
             if not user_data.empty:
                 score = user_data['Risk_Score'].values[0]
-                hex_color = "#8b191d" if score >= 75 else ("#f37021" if score >= 40 else "#008000")
+                hex_color = ICICI_MAROON if score >= 75 else (ICICI_ORANGE if score >= 40 else "#008000")
                 status = "HIGH RISK" if score >= 75 else ("MEDIUM RISK" if score >= 40 else "LOW RISK")
                 
                 st.markdown(f"<div style='text-align: center;'><p style='font-size: 80px; font-weight: bold; color: {hex_color}; margin-bottom: 0;'>{score}%</p><h2 style='color: {hex_color}; font-weight: bold; margin-top: 0;'>{status}</h2></div>", unsafe_allow_html=True)
@@ -173,8 +169,8 @@ else:
                     st.write(f"**Tenure:** {user_data['TENURE_YRS'].values[0]} Years | **Grade:** {user_data['GRADE'].values[0]}")
                 with c2:
                     st.subheader("🚀 Actionables")
-                    if score >= 75: st.warning("ER Intervention Required: Immediate 'Stay Interview' and compensation review recommended.")
-                    elif score >= 40: st.info("Engagement Focus: Discussion on career growth and skill mapping recommended.")
+                    if score >= 75: st.warning("ER Intervention Required: Immediate 'Stay Interview' recommended.")
+                    elif score >= 40: st.info("Engagement Focus: Career growth discussion recommended.")
                     else: st.success("Recognition: Nominate for peer-to-peer appreciation.")
             else:
                 st.error("Employee ID not found.")
@@ -184,8 +180,7 @@ else:
         st.title("🔐 ER Login")
         try:
             stats_df = pd.read_excel('Attrition_Final_Production_v8_Final_Analysis.xlsx', sheet_name='Regression_Stats')
-            st.subheader("Statistical Performance")
             st.table(stats_df)
-            st.write("Target R-Squared: **42.12%** | P-Value: **0.0000234**")
+            st.write(f"Target R-Squared: **42.12%** | P-Value: **0.0000234**")
         except:
             st.warning("Stats sheet not found.")
