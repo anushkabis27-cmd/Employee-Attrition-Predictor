@@ -20,39 +20,39 @@ st.markdown(f"""
     
     /* Header Branding */
     .header-container {{ display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; }}
-    .slogan {{ color: white; font-size: 22px; font-weight: 600; font-family: 'Georgia', serif; }}
+    .slogan {{ color: white; font-size: 24px; font-weight: 600; font-family: 'Georgia', serif; }}
     
     /* Cover Page Typography */
-    .cover-title {{ text-align: center; color: white; font-size: 120px; font-weight: 900; margin-top: 30px; letter-spacing: -3px; line-height: 1; }}
-    .cover-subtitle {{ text-align: center; color: white; font-size: 32px; margin-bottom: 70px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }}
+    .cover-title {{ text-align: center; color: white; font-size: 130px; font-weight: 900; margin-top: 20px; letter-spacing: -3px; line-height: 1; font-family: 'Trebuchet MS', sans-serif; }}
+    .cover-subtitle {{ text-align: center; color: white; font-size: 38px; margin-bottom: 70px; font-weight: 800; line-height: 1.2; padding: 0 10%; }}
     
     /* Interactive Maroon Cards */
-    .stButton > button {{
+    div.stButton > button {{
         background-color: {ICICI_MAROON} !important;
         color: white !important;
-        border: none !important;
-        padding: 50px 30px !important;
+        border: 2px solid rgba(255,255,255,0.2) !important;
+        padding: 40px 20px !important;
         border-radius: 15px !important;
-        height: 280px !important;
+        height: 300px !important;
         width: 100% !important;
-        box-shadow: 0 10px 20px rgba(0,0,0,0.2) !important;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.3) !important;
         transition: all 0.3s ease !important;
         display: flex !important;
         flex-direction: column !important;
         align-items: center !important;
         justify-content: center !important;
-        white-space: normal !important;
     }}
     
-    .stButton > button:hover {{
-        transform: translateY(-10px) !important;
-        box-shadow: 0 15px 30px rgba(0,0,0,0.4) !important;
+    div.stButton > button:hover {{
+        transform: translateY(-12px) !important;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.5) !important;
         background-color: #a31d22 !important;
+        border: 2px solid white !important;
     }}
 
-    /* Card Content Styling */
-    .card-title {{ font-size: 26px; font-weight: 700; margin-bottom: 15px; display: block; }}
-    .card-desc {{ font-size: 16px; font-weight: 400; opacity: 0.9; display: block; line-height: 1.4; }}
+    /* Stylish Card Text */
+    .card-title {{ font-size: 28px !important; font-weight: 800 !important; font-family: 'Verdana', sans-serif !important; display: block; margin-bottom: 15px; text-transform: uppercase; }}
+    .card-desc {{ font-size: 18px !important; font-weight: 500 !important; opacity: 0.95; display: block; line-height: 1.4; font-style: italic; }}
     
     /* Module UI Styling */
     .module-card {{ background: white; padding: 25px; border-radius: 15px; color: #333; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }}
@@ -71,7 +71,6 @@ def load_data():
         st.stop()
     df = pd.read_excel(file_path, sheet_name=0)
     df.columns = df.columns.str.strip()
-    # Filter only for Active employees for prediction
     return df[df['Status'].str.upper() == 'ACTIVE'].copy()
 
 df = load_data()
@@ -83,7 +82,7 @@ if 'page' not in st.session_state:
 # --- HEADER SECTION ---
 st.markdown(f"""
     <div class="header-container">
-        <img src="https://www.icicibank.com/assets/images/logo.png" width="220">
+        <img src="https://www.icicibank.com/assets/images/logo.png" width="240">
         <div class="slogan">Predict. Prevent. Retain</div>
     </div>
     """, unsafe_allow_html=True)
@@ -93,12 +92,12 @@ st.markdown(f"""
 # 1. COVER PAGE
 if st.session_state.page == "Cover":
     st.markdown("<h1 class='cover-title'>iRetain</h1>", unsafe_allow_html=True)
-    st.markdown("<p class='cover-subtitle'><b>The Intelligent Workforce Turnover Risk Analyzer</b></p>", unsafe_allow_html=True)
+    st.markdown("<p class='cover-subtitle'>The Intelligent Workforce Turnover Risk Analyzer</p>", unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        # Button label formatted with HTML to look like a card
+        # Styled Text inside Button Label
         label1 = "ZONE-WISE RISK SUMMARY\n\nAn overview of Turnover Risk across 4 zones"
         if st.button(label1, key="nav_summary"):
             st.session_state.page = "Summary"
@@ -127,12 +126,9 @@ elif st.session_state.page == "Summary":
     for i, zone in enumerate(zones):
         with cols[i % 2]:
             st.markdown(f"<div class='module-card'><h3>📍 {zone} Zone</h3>", unsafe_allow_html=True)
-            
-            # Map zone column (assuming 'ZONE' or 'Zone' exists in v8 file)
             zone_col = 'ZONE' if 'ZONE' in df.columns else 'Zone'
             zone_df = df[df[zone_col] == zone] if zone_col in df.columns else df.iloc[i*100:(i+1)*100]
             
-            # Use Risk Level column
             level_col = 'Risk_Level' if 'Risk_Level' in df.columns else 'Risk Level'
             counts = zone_df[level_col].value_counts(normalize=True) * 100
             
@@ -157,7 +153,6 @@ elif st.session_state.page == "Predictor":
             user_data = df[df['EMPID'] == emp_id]
             if not user_data.empty:
                 row = user_data.iloc[0]
-                # Columns from v8 file
                 score = row.get('Attrition_Risk_Percentage', 0)
                 level = row.get('Risk_Level', 'Low')
                 
@@ -174,22 +169,17 @@ elif st.session_state.page == "Predictor":
                 st.error("Employee ID not found in the active database.")
         st.markdown("</div>", unsafe_allow_html=True)
 
-# 4. ER LOGIN (Appendix/Model Specs)
+# 4. ER LOGIN (Appendix)
 elif st.session_state.page == "Login":
     if st.button("← Back to Home Dashboard"): st.session_state.page = "Cover"; st.rerun()
     st.markdown("<h2 style='color:white; text-align:center;'>ER Login | Model Statistics</h2>", unsafe_allow_html=True)
     
     st.markdown("<div class='module-card'>", unsafe_allow_html=True)
     try:
-        # Load stats from specific sheet in v8 file
         stats_df = pd.read_excel('Attrition_Final_Production_v8_Final_Analysis.xlsx', sheet_name='Regression_Stats')
         st.table(stats_df)
-        
         st.markdown("---")
-        st.subheader("Key Predictive Metrics")
-        st.write("Target R-Squared: **42.12%**")
-        st.write("Statistical Significance (P-Value): **0.0000234**")
-        st.write("Current Dataset: **Active Employees Only**")
+        st.write("Target R-Squared: **42.12%** | P-Value: **0.0000234**")
     except:
-        st.warning("Could not load technical stats sheet. Please verify the 'Regression_Stats' sheet exists.")
+        st.warning("Stats sheet not found.")
     st.markdown("</div>", unsafe_allow_html=True)
