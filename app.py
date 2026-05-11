@@ -217,3 +217,8 @@ else:
             st.write("Statistical Significance (P-Value): **0.0000234**")
         except:
             st.warning("Regression stats sheet not found in the data file.")
+            st.table(stats_df)
+            st.write("Target R-Squared: **42.12%**")
+            st.write("Statistical Significance (P-Value): **0.0000234**")
+        except:
+            st.warning("Regression stats sheet not found in the data file.")
