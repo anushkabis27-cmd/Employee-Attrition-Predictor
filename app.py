@@ -38,10 +38,15 @@ if st.session_state.page == "Cover":
             .stApp { background-color: #f37021 !important; }
         </style>
     """
-    st.markdown(hide_sidebar_style, unsafe_allow_html=True)
+   st.markdown(f"""
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 20px 40px;">
+        <img src="icicibanklogo.png" width="240">  <div style="color: white; font-size: 24px; font-weight: 600; font-family: 'Georgia', serif;">Predict. Prevent. Retain</div>
+    </div>
+    """, unsafe_allow_html=True)
 else:
     # Standard Sidebar styling for other pages
-    st.markdown("""<style>.stApp { background-color: white !important; }</style>""", unsafe_allow_html=True)
+    st.sidebar.image("icicibanklogo.png", width=200) # Update this to your local filename
+    st.sidebar.title("Navigation")
 
 # --- NAVIGATION LOGIC ---
 
