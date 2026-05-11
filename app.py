@@ -20,11 +20,11 @@ st.markdown(f"""
     
     /* Header Branding */
     .header-container {{ display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; }}
-    .slogan {{ color: white; font-size: 24px; font-weight: 600; font-family: 'Georgia', serif; }}
+    .slogan {{ color: white; font-size: 40px; font-weight: 700; font-family: 'Mulish', semibold; }}
     
     /* Cover Page Typography */
-    .cover-title {{ text-align: center; color: white; font-size: 130px; font-weight: 900; margin-top: 20px; letter-spacing: -3px; line-height: 1; font-family: 'Trebuchet MS', sans-serif; }}
-    .cover-subtitle {{ text-align: center; color: white; font-size: 38px; margin-bottom: 70px; font-weight: 800; line-height: 1.2; padding: 0 10%; }}
+    .cover-title {{ text-align: center; color: white; font-size: 130px; font-weight: 900; margin-top: 20px; letter-spacing: -3px; line-height: 1; font-family: 'Mulish', semibold; }}
+    .cover-subtitle {{ text-align: center; color: white; font-size: 48px; margin-bottom: 70px; font-weight: 800; line-height: 1.2; padding: 0 10%; }}
     
     /* Interactive Maroon Cards */
     div.stButton > button {{
@@ -33,7 +33,7 @@ st.markdown(f"""
         border: 2px solid rgba(255,255,255,0.2) !important;
         padding: 40px 20px !important;
         border-radius: 15px !important;
-        height: 300px !important;
+        height: 200px !important;
         width: 100% !important;
         box-shadow: 0 10px 25px rgba(0,0,0,0.3) !important;
         transition: all 0.3s ease !important;
@@ -51,8 +51,8 @@ st.markdown(f"""
     }}
 
     /* Stylish Card Text */
-    .card-title {{ font-size: 28px !important; font-weight: 800 !important; font-family: 'Verdana', sans-serif !important; display: block; margin-bottom: 15px; text-transform: uppercase; }}
-    .card-desc {{ font-size: 18px !important; font-weight: 500 !important; opacity: 0.95; display: block; line-height: 1.4; font-style: italic; }}
+    .card-title {{ font-size: 38px !important; font-weight: 800 !important; font-family: 'Mulish', semibold !important; display: block; margin-bottom: 15px; text-transform: uppercase; }}
+    .card-desc {{ font-size: 24px !important; font-weight: 600 !important; opacity: 0.95; display: block; line-height: 1.4; font-style: italic; }}
     
     /* Module UI Styling */
     .module-card {{ background: white; padding: 25px; border-radius: 15px; color: #333; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }}
@@ -98,7 +98,7 @@ if st.session_state.page == "Cover":
     
     with col1:
         # Styled Text inside Button Label
-        label1 = "ZONE-WISE RISK SUMMARY\n\nAn overview of Turnover Risk across 4 zones"
+        label1 = "ZONE-WISE RISK SUMMARY\n\nAn overview of Turnover Risk across 4 Zones"
         if st.button(label1, key="nav_summary"):
             st.session_state.page = "Summary"
             st.rerun()
