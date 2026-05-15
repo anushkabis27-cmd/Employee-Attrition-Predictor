@@ -1,118 +1,185 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import os
 
-# Load the dataset
+# --- FUTURISTIC ICICI THEME CONFIG ---
+st.set_page_config(page_title="ICICI Attrition Sentinel v3.2", layout="wide")
+
+st.markdown("""
+    <style>
+    .main { background-color: #0A192F; color: #E6F1FF; }
+    [data-testid="stSidebar"] { background-color: #f37021; border-right: 2px solid #003366; }
+    [data-testid="stSidebar"] .st-emotion-cache-10trblm { color: white; }
+    .stMetric { background-color: #112240; padding: 20px; border-radius: 15px; border: 1px solid #233554; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+    h1, h2 { color: #64FFDA; font-family: 'Arial'; text-shadow: 2px 2px 4px #000; font-weight: bold; }
+    h3 { color: #f37021; font-weight: bold; }
+    .risk-box { padding: 30px; border-radius: 20px; text-align: center; border: 2px solid; background: rgba(0,0,0,0.3); margin-bottom: 25px; }
+    .big-font { font-size: 85px !important; font-weight: bold; }
+    .report-card { background: rgba(17, 34, 64, 0.9); padding: 25px; border-radius: 15px; border-left: 5px solid #f37021; margin-bottom: 20px; min-height: 250px; }
+    .profile-text { font-size: 18px; margin-bottom: 10px; }
+    .list-row { background: #112240; padding: 10px; border-radius: 10px; margin-bottom: 5px; border: 1px solid #233554; }
+    </style>
+    """, unsafe_allow_html=True)
+
+# --- ROBUST DATA LOADER ---
 @st.cache_data
 def load_data():
-    df = pd.read_csv('Attrition.csv')
-    return df
+    file_path = 'Attrition_Final_Production_v5_Corrected.xlsx'
+    if not os.path.exists(file_path):
+        st.error(f"⚠️ **File Not Found:** Please upload '{file_path}'")
+        st.stop()
+    try:
+        df = pd.read_excel(file_path, sheet_name=0)
+        df.columns = df.columns.str.strip()
+        return df
+    except Exception as e:
+        st.error(f"❌ **Error:** {e}")
+        st.stop()
 
 df = load_data()
 
-# Helper function to generate reasons and actionables (Placeholder logic)
-def get_insights(row):
-    reasons = []
-    actions = []
-    
-    if row['Distance_From_Home_KM'] > 1000:
-        reasons.append("High Distance from Home")
-        actions.append("Discuss remote work options or relocation assistance.")
-    if row['TENURE_YRS'] < 2:
-        reasons.append("Early Career/Low Tenure")
-        actions.append("Assign a mentor and conduct a 30-60-90 day feedback session.")
-    if row['Attrition_Risk_Percentage'] > 70:
-        reasons.append("High Statistical Probability (ML Model)")
-        actions.append("Immediate 1-on-1 meeting to discuss career growth and pain points.")
-    
-    if not reasons:
-        reasons = ["General Market Factors"]
-        actions = ["Regular engagement and performance recognition."]
-        
-    return ", ".join(reasons), ", ".join(actions)
-
-# Initialize Session State for Navigation
+# --- STATE MANAGEMENT ---
 if 'current_page' not in st.session_state:
-    st.session_state['current_page'] = 'ER_Login'
+    st.session_state['current_page'] = "Zone wise turnover prediction"
 if 'selected_empid' not in st.session_state:
     st.session_state['selected_empid'] = None
 
-# --- PAGE 2: EMPLOYEE RISK PREDICTOR (Detail View) ---
-def show_employee_details(empid):
-    st.button("⬅️ Back to ER Dashboard", on_click=lambda: st.session_state.update({"current_page": "ER_Login"}))
-    
-    emp_data = df[df['EMPID'] == empid].iloc[0]
-    reason, actionables = get_insights(emp_data)
-    
-    st.title(f"Employee Risk Predictor: {empid}")
-    
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Risk Percentage", f"{emp_data['Attrition_Risk_Percentage']}%")
-    col2.metric("Risk Level", emp_data['Risk_Level'])
-    col3.metric("Tenure", f"{emp_data['TENURE_YRS']} Yrs")
+# --- SIDEBAR NAVIGATION ---
+st.sidebar.title("💠 SENTINEL AI")
+st.sidebar.markdown("---")
 
-    st.subheader("Employee Profile")
-    st.json({
-        "Grade": emp_data['GRADE'],
-        "Location": emp_data['Work_Location'],
-        "Zone": emp_data['ZONE'],
-        "Main Group": emp_data['MAIN_GROUP']
-    })
+# Sync sidebar with session state
+page_options = ["Zone wise turnover prediction", "Employee risk indicator", "ER Login"]
+selected_page = st.sidebar.radio("NAVIGATION", page_options, 
+                                  index=page_options.index(st.session_state['current_page']))
+st.session_state['current_page'] = selected_page
 
-    st.error(f"**Primary Reason for Risk:** {reason}")
-    st.success(f"**Recommended Actionables:** {actionables}")
+# --- PAGE 1: ZONE WISE TURNOVER PREDICTION ---
+if st.session_state['current_page'] == "Zone wise turnover prediction":
+    st.title("🌐 Zone wise turnover prediction [cite: 8]")
+    st.markdown("#### Regional Vulnerability Matrix [cite: 8]")
+    
+    region_col = 'Home State' if 'Home State' in df.columns else ('ZONE' if 'ZONE' in df.columns else None)
+    if region_col:
+        regions = df[region_col].unique()[:4]
+        cols = st.columns(2) [cite: 9]
+        for i, region in enumerate(regions):
+            with cols[i % 2]:
+                st.markdown(f"<div class='stMetric'><h3>📍 {region}</h3>", unsafe_allow_html=True)
+                reg_df = df[df[region_col] == region]
+                level_col = 'Risk_Level' if 'Risk_Level' in df.columns else 'Risk Level'
+                counts = reg_df[level_col].value_counts(normalize=True) * 100
+                
+                fig, ax = plt.subplots(figsize=(6, 3)) [cite: 11]
+                cats = ['High', 'Medium', 'Low']
+                vals = [counts.get('High', 0), counts.get('Medium', 0), counts.get('Low', 0)]
+                bars = ax.bar(cats, vals, color=['#FF3131', '#FFD700', '#2ECC71'], edgecolor='white') [cite: 12]
+                ax.set_facecolor('#112240')
+                fig.patch.set_facecolor('#0A192F')
+                ax.tick_params(colors='white')
+                ax.set_ylim(0, 100)
+                for bar in bars:
+                    ax.text(bar.get_x() + bar.get_width()/2., bar.get_height() + 2, f'{bar.get_height():.1f}%', ha='center', color='#64FFDA', fontweight='bold') [cite: 13]
+                st.pyplot(fig)
+                st.markdown("</div>", unsafe_allow_html=True)
+
+# --- PAGE 2: EMPLOYEE RISK INDICATOR ---
+elif st.session_state['current_page'] == "Employee risk indicator":
+    st.title("🆔 Employee risk indicator [cite: 15]")
+    
+    # Check if we arrived here from ER Login via a specific EMPID
+    if st.session_state['selected_empid']:
+        emp_id = st.session_state['selected_empid']
+        if st.button("⬅️ Back to ER Dashboard"):
+            st.session_state['selected_empid'] = None
+            st.session_state['current_page'] = "ER Login"
+            st.rerun()
+    else:
+        emp_id = st.number_input("Enter EMPID to search", min_value=0, step=1) [cite: 15]
+
+    if emp_id:
+        user_data = df[df['EMPID'] == emp_id]
+        if not user_data.empty:
+            row = user_data.iloc[0]
+            score = row.get('Attrition_Risk_Percentage', row.get('Attrition Risk (%)', 0)) [cite: 16]
+            level = row.get('Risk_Level', row.get('Risk Level', 'Low'))
+            h_color = "#FF3131" if level == 'High' else ("#FFD700" if level == 'Medium' else "#2ECC71")
+            
+            st.markdown(f"<div class='risk-box' style='border-color: {h_color};'>", unsafe_allow_html=True)
+            st.markdown(f"<p class='big-font' style='color: {h_color};'>{score}%</p>", unsafe_allow_html=True) [cite: 17]
+            st.markdown(f"<h1 style='color: {h_color};'>{level.upper()} RISK</h1>", unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+            
+            # Profile Details [cite: 18, 19]
+            st.subheader("📋 Employee Profile Details")
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                st.write(f"**Grade:** {row.get('GRADE', 'N/A')}")
+                st.write(f"**EMPID:** {row.get('EMPID', 'N/A')}")
+            with c2:
+                st.write(f"**Age:** {row.get('AGE', 'N/A')}")
+                st.write(f"**Tenure:** {row.get('TENURE_YRS', 'N/A')} Years")
+            with c3:
+                st.write(f"**Home:** {row.get('Home State', 'N/A')}")
+                st.write(f"**Work:** {row.get('Work City', 'N/A')}")
+
+            col_a, col_b = st.columns(2)
+            with col_a:
+                st.markdown("<div class='report-card'><h4>🔍 Risk Factor Analysis</h4>", unsafe_allow_html=True)
+                if level == 'High':
+                    st.write("• Profile falls within Critical Attrition Window (3-5 years) [cite: 21]")
+                    st.write("• Distance/Tenure ratio suggests immediate risk [cite: 21]")
+                elif level == 'Medium':
+                    st.write("• Mid-tenure engagement dip detected [cite: 22]")
+                st.markdown("</div>", unsafe_allow_html=True)
+            with col_b:
+                st.markdown(f"<div class='report-card' style='border-left-color: {h_color};'><h4>🚀 Mitigation Actionables</h4>", unsafe_allow_html=True)
+                if level == 'High':
+                    st.write("• **ER Physical Intervention:** Urgent 1:1 visit [cite: 24]")
+                    st.write("• **Relationship Reset:** Mentorship pairing [cite: 24]")
+                elif level == 'Medium':
+                    st.write("• **Structured Connect:** ER Manager confidential 1:1 [cite: 25]")
+                st.markdown("</div>", unsafe_allow_html=True)
+        else:
+            st.error("EMPID not found.")
 
 # --- PAGE 3: ER LOGIN ---
-def show_er_login():
-    st.title("ER Manager Login")
+elif st.session_state['current_page'] == "ER Login":
+    st.title("👤 ER Manager Portal")
+    st.markdown("#### Dedicated Dashboard for Mapped Employee Oversight")
     
-    manager_id = st.number_input("Enter your ER Manager ID", min_value=0, step=1, value=0)
+    er_id = st.number_input("Enter ER Manager ID to Access", min_value=0, step=1)
     
-    if st.button("Search"):
-        if manager_id in df['ER manager ID'].values:
-            st.session_state['manager_logged_in'] = manager_id
-            st.success(f"Welcome, Manager {manager_id}")
+    if er_id:
+        # Check if column exists, else use standard fallback
+        er_col = 'ER manager ID' if 'ER manager ID' in df.columns else None
+        
+        if er_col and er_id in df[er_col].values:
+            manager_df = df[df[er_col] == er_id]
+            high_risk_df = manager_df[manager_df['Risk_Level'] == 'High']
+            
+            st.divider()
+            st.subheader(f"Summary for Manager ID: {er_id}")
+            st.metric("Total High Risk Employees Mapped", len(high_risk_df))
+            
+            if st.button("🔍 View High Risk Employee List"):
+                st.session_state['show_er_list'] = True
+            
+            if st.session_state.get('show_er_list'):
+                if not high_risk_df.empty:
+                    st.markdown("---")
+                    for _, row in high_risk_df.iterrows():
+                        with st.container():
+                            col1, col2, col3 = st.columns([1, 1, 1])
+                            col1.write(f"**ID:** {row['EMPID']}")
+                            col2.write(f"**Risk:** {row['Attrition_Risk_Percentage']}%")
+                            if col3.button("Analyze details", key=f"btn_{row['EMPID']}"):
+                                st.session_state['selected_empid'] = row['EMPID']
+                                st.session_state['current_page'] = "Employee risk indicator"
+                                st.rerun()
+                else:
+                    st.success("No high-risk employees found for this Manager ID.")
         else:
-            st.error("Manager ID not found.")
-
-    if 'manager_logged_in' in st.session_state:
-        mid = st.session_state['manager_logged_in']
-        manager_df = df[df['ER manager ID'] == mid]
-        high_risk_count = len(manager_df[manager_df['Risk_Level'] == 'High'])
-        
-        st.divider()
-        st.subheader(f"Dashboard for Manager ID: {mid}")
-        
-        # Display Summary Metric
-        st.metric("Total Employees in High Risk Category", high_risk_count)
-        
-        # Button to show the list
-        if st.button("View High Risk Employees List"):
-            st.session_state['show_list'] = True
-            
-        if st.session_state.get('show_list'):
-            high_risk_list = manager_df[manager_df['Risk_Level'] == 'High']
-            
-            if not high_risk_list.empty():
-                st.write("Click on an Employee ID to view detailed risk analysis:")
-                
-                # Create a list of buttons for each employee
-                for index, row in high_risk_list.iterrows():
-                    emp_id = row['EMPID']
-                    risk_pct = row['Attrition_Risk_Percentage']
-                    
-                    # Using columns to make it look like a list
-                    c1, c2, c3 = st.columns([2, 2, 1])
-                    c1.write(f"**EMPID:** {emp_id}")
-                    c2.write(f"**Risk:** {risk_pct}%")
-                    if c3.button("View Details", key=f"btn_{emp_id}"):
-                        st.session_state['selected_empid'] = emp_id
-                        st.session_state['current_page'] = 'Risk_Predictor'
-                        st.rerun()
-            else:
-                st.info("No high-risk employees mapped to your ID.")
-
-# --- MAIN APP LOGIC ---
-if st.session_state['current_page'] == 'ER_Login':
-    show_er_login()
-elif st.session_state['current_page'] == 'Risk_Predictor':
-    show_employee_details(st.session_state['selected_empid'])
+            st.error("Manager ID not found in the database.")
