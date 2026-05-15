@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import os
 
 # --- FUTURISTIC ICICI THEME CONFIG ---
-st.set_page_config(page_title="ICICI Attrition Sentinel v3.2", layout="wide")
+st.set_page_config(page_title="ICICI Attrition Predictor", layout="wide")
 
 st.markdown("""
     <style>
@@ -26,7 +26,7 @@ st.markdown("""
 # --- ROBUST DATA LOADER ---
 @st.cache_data
 def load_data():
-    file_path = 'Attrition_Final_Production_v5_Corrected.xlsx'
+    file_path = 'Attrition.csv'
     if not os.path.exists(file_path):
         st.error(f"⚠️ **File Not Found:** Please upload '{file_path}'")
         st.stop()
@@ -47,7 +47,7 @@ if 'selected_empid' not in st.session_state:
     st.session_state['selected_empid'] = None
 
 # --- SIDEBAR NAVIGATION ---
-st.sidebar.title("💠 SENTINEL AI")
+st.sidebar.title("💠 iRetain")
 st.sidebar.markdown("---")
 
 # Sync sidebar with session state
