@@ -7,7 +7,7 @@ import os
 # --- 1. CONFIGURATION ---
 st.set_page_config(page_title="iRetain | Workforce Analytics", layout="wide")
 
-# --- 2. PROFESSIONAL CLEAN UI CSS ---
+# --- 2. REFINED PROFESSIONAL UI CSS ---
 st.markdown("""
     <style>
     .main { background-color: #FFFFFF; color: #333333; }
@@ -147,6 +147,7 @@ elif st.session_state['current_page'] == "Employee risk indicator":
             row = user_data.iloc[0]
             score = row.get('Attrition_Risk_Percentage', 0)
             level = row.get('Risk_Level', 'Low')
+            tenure = row.get('TENURE_YRS', 0)
             h_color = "#D7191C" if level == 'High' else ("#FFCC00" if level == 'Medium' else "#28A745")
             st.markdown(f"<div class='risk-box' style='border-color: {h_color}; color: {h_color};'><p class='big-font'>{score:.1f}%</p><h1>{level.upper()} RISK</h1></div>", unsafe_allow_html=True)
             
@@ -155,10 +156,11 @@ elif st.session_state['current_page'] == "Employee risk indicator":
             with c1: 
                 st.write(f"**EMPID:** {row['EMPID']}")
                 st.write(f"**Grade:** {row['GRADE']}")
-                st.write(f"**Work Location:** {row.get('Work_Location', 'N/A')}")
+                # Using 'Work_Location' directly since we cleaned the data previously
+                st.write(f"**Work Location:** {row.get('Work_Location', row.get('Office_Location', 'N/A'))}")
             with c2: 
                 st.write(f"**Age:** {row['AGE']}")
-                st.write(f"**Tenure:** {row['TENURE_YRS']} Yrs")
+                st.write(f"**Tenure:** {tenure} Yrs")
                 st.write(f"**Home Location:** {row.get('Home_Location', 'N/A')}")
             with c3: 
                 st.write(f"**Zone:** {row['ZONE']}")
@@ -168,9 +170,19 @@ elif st.session_state['current_page'] == "Employee risk indicator":
             col_a, col_b = st.columns(2)
             with col_a:
                 st.markdown("<div class='report-card'><h4>🔍 Risk Factor Analysis</h4>", unsafe_allow_html=True)
-                if level == 'High': 
-                    st.write("• Profile falls within Critical Attrition Window (3-5 years).")
-                    st.write("• High Distance/Tenure ratio detected.")
+                # DYNAMIC REASON LOGIC
+                if level == 'High':
+                    if 3 <= tenure <= 5:
+                        st.write("• Profile falls within Critical Attrition Window (3-5 years).")
+                    elif tenure > 10:
+                        st.write(f"• Long-tenure fatigue ({int(tenure)} years); may require role rotation.")
+                    else:
+                        st.write("• High-risk markers detected in historical modeling.")
+                    
+                    if row.get('AGE', 0) < 30:
+                        st.write("• Vulnerable age segment (<30 years) with high market mobility.")
+                    if row.get('Distance_From_Home_KM', 0) > 1000:
+                        st.write(f"• Extreme commute stress detected ({row['Distance_From_Home_KM']} KM).")
                 elif level == 'Medium':
                     st.write("• Mid-tenure engagement dip detected.")
                 else: 
@@ -180,11 +192,11 @@ elif st.session_state['current_page'] == "Employee risk indicator":
                 st.markdown(f"<div class='report-card' style='border-left-color: {h_color};'><h4>🚀 Mitigation Actionables</h4>", unsafe_allow_html=True)
                 if level == 'High': 
                     st.write("• **ER Intervention:** Urgent 1:1 visit required.")
-                    st.write("• **Mentorship:** Pair with senior leader.")
+                    st.write("• **Retention Talk:** Discuss internal mobility and role rotation.")
                 elif level == 'Medium':
                     st.write("• **Structured Connect:** ER Manager confidential 1:1.")
                 else: 
-                    st.write("• **Appreciation:** Nominate for performer award.")
+                    st.write("• **Appreciation:** Nominate for performance award.")
                 st.markdown("</div>", unsafe_allow_html=True)
         else: st.error("EMPID not found.")
 
