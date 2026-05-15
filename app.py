@@ -7,88 +7,36 @@ import os
 # --- 1. CONFIGURATION ---
 st.set_page_config(page_title="iRetain | Workforce Analytics", layout="wide")
 
-# --- 2. REFINED PROFESSIONAL UI CSS ---
+# --- 2. PROFESSIONAL CLEAN UI CSS ---
 st.markdown("""
     <style>
     .main { background-color: #FFFFFF; color: #333333; }
     [data-testid="stSidebar"] { background-color: #f37021; }
     [data-testid="stSidebar"] .st-emotion-cache-10trblm { color: white; }
     
-    /* Centered Main Title */
-    .centered-title {
-        text-align: center;
-        color: #003366;
-        font-family: 'Segoe UI', Arial;
-        font-weight: bold;
-        margin-bottom: 20px;
-    }
-
-    /* Section Header - Black */
-    .section-header {
-        color: #000000;
-        font-weight: bold;
-        font-size: 20px;
-        margin-bottom: 15px;
-    }
+    .centered-title { text-align: center; color: #003366; font-family: 'Segoe UI', Arial; font-weight: bold; margin-bottom: 20px; }
+    .section-header { color: #000000; font-weight: bold; font-size: 20px; margin-bottom: 15px; }
 
     /* Metric Boxes - Orange with White Text */
-    .metric-container {
-        background-color: #f37021;
-        padding: 15px;
-        border-radius: 8px;
-        text-align: center;
-        color: white;
-    }
+    .metric-container { background-color: #f37021; padding: 15px; border-radius: 8px; text-align: center; color: white; }
     .metric-value { font-size: 26px; font-weight: bold; color: white; }
     .metric-label { font-size: 14px; color: white; }
 
     /* Quadrant Box Styling */
-    .quadrant-box {
-        background-color: #FFFFFF;
-        padding: 0px;
-        border-radius: 8px;
-        border: 1px solid #EEEEEE;
-        margin-bottom: 10px;
-        overflow: hidden;
-    }
+    .quadrant-box { background-color: #FFFFFF; padding: 0px; border-radius: 8px; border: 1px solid #EEEEEE; margin-bottom: 10px; overflow: hidden; }
+    .zone-header { background-color: #f37021; color: white; padding: 10px; font-size: 24px; font-weight: bold; text-align: center; }
 
-    /* Orange Zone Header */
-    .zone-header {
-        background-color: #f37021;
-        color: white;
-        padding: 10px;
-        font-size: 24px;
-        font-weight: bold;
-        text-align: center;
-    }
+    /* Detail Page Styling */
+    .risk-box { padding: 30px; border-radius: 20px; text-align: center; border: 2px solid; background: #FAFAFA; margin-bottom: 25px; }
+    .big-font { font-size: 70px !important; font-weight: bold; }
+    .report-card { background: #FFFFFF; padding: 25px; border-radius: 15px; border-left: 5px solid #f37021; border-top: 1px solid #EEE; border-right: 1px solid #EEE; border-bottom: 1px solid #EEE; margin-bottom: 20px; }
 
-    /* Global Button Styling */
-    div.stButton > button {
-        background-color: #f37021 !important;
-        color: white !important;
-        border-radius: 4px;
-        border: none;
-        width: 100%;
-        font-weight: 600;
-    }
-    
-    /* Large buttons for Risk Filters */
-    .large-btn-container div.stButton > button {
-        padding: 15px 10px !important;
-        font-size: 18px !important;
-        height: 60px !important;
-    }
-
-    /* Small buttons for Numbers/Percentage */
-    .small-btn-container div.stButton > button {
-        padding: 5px !important;
-        font-size: 13px !important;
-        height: auto !important;
-        margin-bottom: 8px;
-    }
+    /* Button Styling */
+    div.stButton > button { background-color: #f37021 !important; color: white !important; border-radius: 4px; border: none; width: 100%; font-weight: 600; }
+    .large-btn-container div.stButton > button { padding: 15px 10px !important; font-size: 18px !important; height: 60px !important; }
+    .small-btn-container div.stButton > button { padding: 5px !important; font-size: 13px !important; height: auto !important; margin-bottom: 8px; }
     
     .chart-container { padding: 5px; }
-    hr { margin-top: 10px !important; margin-bottom: 10px !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -120,17 +68,16 @@ selected_sidebar = st.sidebar.radio("NAVIGATION", page_options,
 
 if selected_sidebar != st.session_state['current_page']:
     st.session_state['current_page'] = selected_sidebar
-    st.session_state['selected_empid'] = None
+    if selected_sidebar != "Employee risk indicator":
+        st.session_state['selected_empid'] = None
 
 # --- PAGE 1: ZONE WISE RISK SUMMARY ---
 if st.session_state['current_page'] == "Zone wise turnover prediction":
     st.markdown("<h1 class='centered-title'>Zone-Wise Risk Summary</h1>", unsafe_allow_html=True)
-    
     col_content, col_legend = st.columns([4, 1.2])
 
     with col_content:
         st.markdown("<div class='section-header'>High Risk Profiling</div>", unsafe_allow_html=True)
-        
         total_emp = len(df)
         high_risk_count = len(df[df['Risk_Level'] == 'High'])
         high_risk_pct = (high_risk_count / total_emp) * 100
@@ -142,74 +89,115 @@ if st.session_state['current_page'] == "Zone wise turnover prediction":
 
         st.divider()
         st.write(f"#### Group wise - Risk: {st.session_state['risk_filter']} Level")
-        
         color_map = {'High': '#D7191C', 'Medium': '#FFCC00', 'Low': '#28A745'}
         current_color = color_map[st.session_state['risk_filter']]
 
         zones = ['North', 'South', 'East', 'West']
-        row1 = st.columns(2)
-        row2 = st.columns(2)
-        all_cols = row1 + row2
-
+        grid_rows = [st.columns(2), st.columns(2)]
         for i, zone in enumerate(zones):
-            with all_cols[i]:
+            with grid_rows[i // 2][i % 2]:
                 st.markdown(f"<div class='quadrant-box'><div class='zone-header'>{zone}</div><div class='chart-container'>", unsafe_allow_html=True)
-                
                 zone_data = df[(df['ZONE'].str.capitalize() == zone) & (df['Risk_Level'] == st.session_state['risk_filter'])]
                 if not zone_data.empty:
                     counts = zone_data['MAIN_GROUP'].value_counts()
                     total_in_dept = df[df['ZONE'].str.capitalize() == zone]['MAIN_GROUP'].value_counts()
                     percentages = (counts / total_in_dept * 100).fillna(0)
-
                     fig, ax = plt.subplots(figsize=(5, 3))
                     bars = ax.bar(counts.index, counts.values, color=current_color)
-                    max_v = max(counts.values) if not counts.empty else 10
-                    ax.set_ylim(0, max_v * 1.35) 
-
+                    max_v = max(counts.values) * 1.35 if not counts.empty else 10
+                    ax.set_ylim(0, max_v)
                     for bar, label_val in zip(bars, percentages.values if st.session_state['view_mode'] == 'Percentage' else counts.values):
                         height = bar.get_height()
                         label = f"{label_val:.1f}%" if st.session_state['view_mode'] == 'Percentage' else f"{int(label_val)}"
                         ax.text(bar.get_x() + bar.get_width()/2., height + (max_v * 0.02), label, ha='center', va='bottom', fontsize=9, fontweight='bold')
-
                     ax.set_facecolor('#FFFFFF')
                     ax.tick_params(axis='x', rotation=45, labelsize=8)
                     ax.set_ylabel("Count", fontsize=9)
-                    ax.set_xlabel("")
                     st.pyplot(fig)
-                else:
-                    st.write("No data found for this selection.")
+                else: st.write("No data found for this selection.")
                 st.markdown("</div></div>", unsafe_allow_html=True)
 
     with col_legend:
-        # Risk Filters First
         st.write("**Risk View Filter**")
         st.markdown('<div class="large-btn-container">', unsafe_allow_html=True)
         if st.button("High Risk"): st.session_state['risk_filter'] = 'High'
-        st.write("")
         if st.button("Medium Risk"): st.session_state['risk_filter'] = 'Medium'
-        st.write("")
         if st.button("Low Risk"): st.session_state['risk_filter'] = 'Low'
         st.markdown('</div>', unsafe_allow_html=True)
-
         st.divider()
-
-        # Numbers/Percentage Buttons Second
         st.markdown('<div class="small-btn-container">', unsafe_allow_html=True)
         if st.button("In Numbers"): st.session_state['view_mode'] = 'Numbers'
         if st.button("In Percentage"): st.session_state['view_mode'] = 'Percentage'
         st.markdown('</div>', unsafe_allow_html=True)
 
-# --- PAGE 2 & 3: Standard Placeholder Logic ---
+# --- PAGE 2: EMPLOYEE RISK INDICATOR ---
 elif st.session_state['current_page'] == "Employee risk indicator":
-    st.title("Employee risk indicator")
-    emp_input = st.number_input("Enter EMPID", min_value=0)
-    if emp_input:
-        res = df[df['EMPID'] == emp_input]
-        if not res.empty:
-            st.write(res.iloc[0])
+    st.markdown("<h1 class='centered-title'>Employee Risk Indicator</h1>", unsafe_allow_html=True)
+    if st.session_state['selected_empid']:
+        emp_id = st.session_state['selected_empid']
+        if st.button("⬅️ Back to ER Dashboard"):
+            st.session_state['selected_empid'] = None
+            st.session_state['current_page'] = "ER Login"
+            st.rerun()
+    else: emp_id = st.number_input("Enter EMPID to search", min_value=0, step=1)
 
+    if emp_id:
+        user_data = df[df['EMPID'] == emp_id]
+        if not user_data.empty:
+            row = user_data.iloc[0]
+            score = row.get('Attrition_Risk_Percentage', 0)
+            level = row.get('Risk_Level', 'Low')
+            h_color = "#D7191C" if level == 'High' else ("#FFCC00" if level == 'Medium' else "#28A745")
+            st.markdown(f"<div class='risk-box' style='border-color: {h_color}; color: {h_color};'><p class='big-font'>{score}%</p><h1>{level.upper()} RISK</h1></div>", unsafe_allow_html=True)
+            
+            st.subheader("📋 Employee Profile Details")
+            c1, c2, c3 = st.columns(3)
+            with c1: st.write(f"**EMPID:** {row['EMPID']}"); st.write(f"**Grade:** {row['GRADE']}")
+            with c2: st.write(f"**Age:** {row['AGE']}"); st.write(f"**Tenure:** {row['TENURE_YRS']} Yrs")
+            with c3: st.write(f"**Zone:** {row['ZONE']}"); st.write(f"**Group:** {row['MAIN_GROUP']}")
+
+            st.divider()
+            col_a, col_b = st.columns(2)
+            with col_a:
+                st.markdown("<div class='report-card'><h4>🔍 Risk Factor Analysis</h4>", unsafe_allow_html=True)
+                if level == 'High': st.write("• Critical Attrition Window (3-5 years) ."); st.write("• High Distance/Tenure ratio.")
+                else: st.write("• Stable tenure-to-age ratio.")
+                st.markdown("</div>", unsafe_allow_html=True)
+            with col_b:
+                st.markdown(f"<div class='report-card' style='border-left-color: {h_color};'><h4>🚀 Mitigation Actionables</h4>", unsafe_allow_html=True)
+                if level == 'High': st.write("• **ER Intervention:** Urgent 1:1 visit ."); st.write("• **Mentorship:** Pair with senior leader.")
+                else: st.write("• **Appreciation:** Nominate for award.")
+                st.markdown("</div>", unsafe_allow_html=True)
+        else: st.error("EMPID not found.")
+
+# --- PAGE 3: ER LOGIN ---
 elif st.session_state['current_page'] == "ER Login":
-    st.title("ER Manager Portal")
-    er_id = st.number_input("Enter ER Manager ID", min_value=0)
-    if 'ER manager ID' in df.columns and er_id in df['ER manager ID'].values:
-        st.success(f"Access granted for Manager {er_id}")
+    st.markdown("<h1 class='centered-title'>ER Manager Portal</h1>", unsafe_allow_html=True)
+    er_id = st.number_input("Enter ER Manager ID", min_value=0, step=1)
+    
+    if er_id:
+        if 'ER manager ID' in df.columns and er_id in df['ER manager ID'].values:
+            manager_df = df[df['ER manager ID'] == er_id]
+            mapped_high_risk = manager_df[manager_df['Risk_Level'] == 'High']
+            
+            st.markdown("<div class='section-header'>High Risk Profiling</div>", unsafe_allow_html=True)
+            m1, m2, m3 = st.columns(3)
+            with m1: st.markdown(f"<div class='metric-container'><div class='metric-label'>Bank Total Employees</div><div class='metric-value'>{len(df)}</div></div>", unsafe_allow_html=True)
+            with m2: st.markdown(f"<div class='metric-container'><div class='metric-label'>Bank High Risk Count</div><div class='metric-value'>{len(df[df['Risk_Level'] == 'High'])}</div></div>", unsafe_allow_html=True)
+            with m3: st.markdown(f"<div class='metric-container'><div class='metric-label'>Your Mapped High Risk</div><div class='metric-value'>{len(mapped_high_risk)}</div></div>", unsafe_allow_html=True)
+
+            st.divider()
+            with st.expander("Show High Risk Employees"):
+                if not mapped_high_risk.empty:
+                    st.write("Click an EMPID to view detail analysis.")
+                    header = st.columns([1, 2, 1, 1])
+                    header[0].write("**EMPID**"); header[1].write("**Group**"); header[2].write("**Grade**"); header[3].write("**Risk %**")
+                    for _, row in mapped_high_risk.iterrows():
+                        cols = st.columns([1, 2, 1, 1])
+                        if cols[0].button(str(row['EMPID']), key=f"btn_{row['EMPID']}"):
+                            st.session_state['selected_empid'] = row['EMPID']
+                            st.session_state['current_page'] = "Employee risk indicator"
+                            st.rerun()
+                        cols[1].write(row['MAIN_GROUP']); cols[2].write(row['GRADE']); cols[3].write(f"{row['Attrition_Risk_Percentage']}%")
+                else: st.success("No high-risk employees mapped to your ID.")
+        else: st.error("Manager ID not found.")
