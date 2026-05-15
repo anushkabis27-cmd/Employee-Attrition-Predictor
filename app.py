@@ -4,10 +4,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 
-# --- 1. MUST BE THE FIRST STREAMLIT COMMAND ---
-st.set_page_config(page_title="iRetain | Predictive Insights", layout="wide") [cite: 1]
+# --- 1. CONFIGURATION (MUST BE THE FIRST STREAMLIT COMMAND) ---
+st.set_page_config(page_title="iRetain | Predictive Insights", layout="wide")
 
-# --- 2. FUTURISTIC iRETAIN THEME ---
+# --- 2. THEME & CUSTOM CSS ---
 st.markdown("""
     <style>
     .main { background-color: #0A192F; color: #E6F1FF; }
@@ -21,9 +21,9 @@ st.markdown("""
     .report-card { background: rgba(17, 34, 64, 0.9); padding: 25px; border-radius: 15px; border-left: 5px solid #f37021; margin-bottom: 20px; min-height: 250px; }
     .profile-text { font-size: 18px; margin-bottom: 10px; }
     </style>
-    """, unsafe_allow_html=True) [cite: 1, 2, 3, 4, 5]
+    """, unsafe_allow_html=True)
 
-# --- 3. DATA LOADER ---
+# --- 3. DATA LOADING ---
 @st.cache_data
 def load_data():
     file_path = 'Attrition.csv'
@@ -31,12 +31,14 @@ def load_data():
         st.error(f"⚠️ **File Not Found:** Please ensure '{file_path}' is in the repository.")
         st.stop()
     try:
-        df = pd.read_csv(file_path) [cite: 6]
-        df.columns = df.columns.str.strip() [cite: 6]
+        # Load CSV and clean columns
+        df = pd.read_csv(file_path)
+        df.columns = df.columns.str.strip()
+        # Filter for active employees
         if 'Status' in df.columns:
-            active_df = df[df['Status'].str.upper() == 'ACTIVE'].copy() [cite: 6]
+            active_df = df[df['Status'].str.upper() == 'ACTIVE'].copy()
         else:
-            active_df = df.copy() [cite: 7]
+            active_df = df.copy()
         return active_df
     except Exception as e:
         st.error(f"❌ **Error reading file:** {e}")
@@ -61,30 +63,36 @@ st.session_state['current_page'] = selected_page
 # --- PAGE 1: ZONE WISE TURNOVER PREDICTION ---
 if st.session_state['current_page'] == "Zone wise turnover prediction":
     st.title("🌐 Zone wise turnover prediction")
-    region_col = 'ZONE' if 'ZONE' in df.columns else ('Home State' if 'Home State' in df.columns else None) [cite: 8, 9]
+    st.markdown("#### Regional Vulnerability Matrix")
+    
+    region_col = 'ZONE' if 'ZONE' in df.columns else ('Home State' if 'Home State' in df.columns else None)
     if region_col:
-        regions = df[region_col].unique()[:4] [cite: 9]
-        cols = st.columns(2) [cite: 9]
+        regions = df[region_col].unique()[:4]
+        cols = st.columns(2)
         for i, region in enumerate(regions):
             with cols[i % 2]:
-                st.markdown(f"<div class='stMetric'><h3>📍 {region}</h3>", unsafe_allow_html=True) [cite: 9, 10]
-                reg_df = df[df[region_col] == region] [cite: 10]
-                level_col = 'Risk_Level' if 'Risk_Level' in df.columns else 'Risk Level' [cite: 10]
-                counts = reg_df[level_col].value_counts(normalize=True) * 100 [cite: 10]
-                fig, ax = plt.subplots(figsize=(6, 3)) [cite: 11]
-                cats = ['High', 'Medium', 'Low'] [cite: 11]
-                vals = [counts.get('High', 0), counts.get('Medium', 0), counts.get('Low', 0)] [cite: 11]
-                bars = ax.bar(cats, vals, color=['#FF3131', '#FFD700', '#2ECC71'], edgecolor='white') [cite: 12]
-                ax.set_facecolor('#112240') [cite: 12]
-                fig.patch.set_facecolor('#0A192F') [cite: 12]
-                ax.tick_params(colors='white') [cite: 12]
-                ax.set_ylim(0, 100) [cite: 12]
-                st.pyplot(fig) [cite: 14]
-                st.markdown("</div>", unsafe_allow_html=True) [cite: 14]
+                st.markdown(f"<div class='stMetric'><h3>📍 {region}</h3>", unsafe_allow_html=True)
+                reg_df = df[df[region_col] == region]
+                level_col = 'Risk_Level' if 'Risk_Level' in df.columns else 'Risk Level'
+                counts = reg_df[level_col].value_counts(normalize=True) * 100
+                
+                fig, ax = plt.subplots(figsize=(6, 3))
+                cats = ['High', 'Medium', 'Low']
+                vals = [counts.get('High', 0), counts.get('Medium', 0), counts.get('Low', 0)]
+                bars = ax.bar(cats, vals, color=['#FF3131', '#FFD700', '#2ECC71'], edgecolor='white')
+                ax.set_facecolor('#112240')
+                fig.patch.set_facecolor('#0A192F')
+                ax.tick_params(colors='white')
+                ax.set_ylim(0, 100)
+                st.pyplot(fig)
+                st.markdown("</div>", unsafe_allow_html=True)
 
 # --- PAGE 2: EMPLOYEE RISK INDICATOR ---
 elif st.session_state['current_page'] == "Employee risk indicator":
     st.title("🆔 Employee risk indicator")
+    st.markdown("#### Predictive Insights & Retention Actionables")
+
+    # If redirected from ER portal, use the selected ID
     if st.session_state['selected_empid']:
         emp_id = st.session_state['selected_empid']
         if st.button("⬅️ Back to ER Dashboard"):
@@ -92,75 +100,88 @@ elif st.session_state['current_page'] == "Employee risk indicator":
             st.session_state['current_page'] = "ER Login"
             st.rerun()
     else:
-        emp_id = st.number_input("Enter EMPID to search", min_value=0, step=1) [cite: 14]
+        emp_id = st.number_input("Enter EMPID to search", min_value=0, step=1)
 
     if emp_id:
-        user_data = df[df['EMPID'] == emp_id] [cite: 15]
-        if not user_data.empty: [cite: 15]
-            row = user_data.iloc[0] [cite: 15]
-            score = row.get('Attrition_Risk_Percentage', 0) [cite: 16]
-            level = row.get('Risk_Level', 'Low') [cite: 16]
-            h_color = "#FF3131" if level == 'High' else ("#FFD700" if level == 'Medium' else "#2ECC71") [cite: 16]
-            st.markdown(f"<div class='risk-box' style='border-color: {h_color};'>", unsafe_allow_html=True) [cite: 16]
-            st.markdown(f"<p class='big-font' style='color: {h_color};'>{score}%</p>", unsafe_allow_html=True) [cite: 17]
-            st.markdown(f"<h1 style='color: {h_color};'>{level.upper()} RISK</h1>", unsafe_allow_html=True) [cite: 17]
-            st.markdown("</div>", unsafe_allow_html=True) [cite: 17]
+        user_data = df[df['EMPID'] == emp_id]
+        if not user_data.empty:
+            row = user_data.iloc[0]
+            score = row.get('Attrition_Risk_Percentage', 0)
+            level = row.get('Risk_Level', 'Low')
+            h_color = "#FF3131" if level == 'High' else ("#FFD700" if level == 'Medium' else "#2ECC71")
             
-            st.subheader("📋 Employee Profile Details") [cite: 18]
-            c1, c2, c3 = st.columns(3) [cite: 18]
+            st.markdown(f"<div class='risk-box' style='border-color: {h_color};'>", unsafe_allow_html=True)
+            st.markdown(f"<p class='big-font' style='color: {h_color};'>{score}%</p>", unsafe_allow_html=True)
+            st.markdown(f"<h1 style='color: {h_color};'>{level.upper()} RISK</h1>", unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+            
+            st.subheader("📋 Employee Profile Details")
+            c1, c2, c3 = st.columns(3)
             with c1:
-                st.write(f"**Grade:** {row.get('GRADE', 'N/A')}") [cite: 18]
-                st.write(f"**EMPID:** {row.get('EMPID', 'N/A')}") [cite: 18]
+                st.write(f"**Grade:** {row.get('GRADE', 'N/A')}")
+                st.write(f"**EMPID:** {row.get('EMPID', 'N/A')}")
             with c2:
-                st.write(f"**Age:** {row.get('AGE', 'N/A')}") [cite: 19]
-                st.write(f"**Tenure:** {row.get('TENURE_YRS', 'N/A')} Years") [cite: 19]
+                st.write(f"**Age:** {row.get('AGE', 'N/A')}")
+                st.write(f"**Tenure:** {row.get('TENURE_YRS', 'N/A')} Years")
             with c3:
-                st.write(f"**Zone:** {row.get('ZONE', 'N/A')}") [cite: 19]
-                st.write(f"**Work City:** {row.get('Work_Location', 'N/A')}") [cite: 19]
+                st.write(f"**Zone:** {row.get('ZONE', 'N/A')}")
+                st.write(f"**Work City:** {row.get('Work_Location', 'N/A')}")
 
-            col_a, col_b = st.columns(2) [cite: 20]
+            col_a, col_b = st.columns(2)
             with col_a:
-                st.markdown("<div class='report-card'><h4>🔍 Risk Factor Analysis</h4>", unsafe_allow_html=True) [cite: 20]
-                if level == 'High': [cite: 21]
-                    st.write("• Profile within Critical Attrition Window (3-5 years).") [cite: 21]
-                    st.write("• Distance/Tenure ratio suggests immediate risk.") [cite: 21]
-                elif level == 'Medium': [cite: 22]
-                    st.write("• Mid-tenure engagement dip detected.") [cite: 22]
+                st.markdown("<div class='report-card'><h4>🔍 Risk Factor Analysis</h4>", unsafe_allow_html=True)
+                if level == 'High':
+                    st.write("• Profile falls within Critical Attrition Window (3-5 years).")
+                    st.write("• Distance/Tenure ratio suggests immediate risk.")
+                elif level == 'Medium':
+                    st.write("• Mid-tenure engagement dip detected.")
                 else:
-                    st.write("• Stable organizational anchoring.") [cite: 22, 23]
-                st.markdown("</div>", unsafe_allow_html=True) [cite: 23]
+                    st.write("• Stable organizational anchoring.")
+                st.markdown("</div>", unsafe_allow_html=True)
             with col_b:
-                st.markdown(f"<div class='report-card' style='border-left-color: {h_color};'><h4>🚀 Mitigation Actionables</h4>", unsafe_allow_html=True) [cite: 23]
-                if level == 'High': [cite: 24]
-                    st.write("• **ER Intervention:** Urgent 1:1 visit required.") [cite: 24]
-                    st.write("• **Retention Plan:** Relationship Reset & Mentorship.") [cite: 24]
-                elif level == 'Medium': [cite: 25]
-                    st.write("• **Structured Connect:** ER Manager confidential 1:1.") [cite: 25]
+                st.markdown(f"<div class='report-card' style='border-left-color: {h_color};'><h4>🚀 Mitigation Actionables</h4>", unsafe_allow_html=True)
+                if level == 'High':
+                    st.write("• **ER Intervention:** Urgent 1:1 visit required.")
+                    st.write("• **Relationship Reset:** Senior-level mentorship pairing.")
+                elif level == 'Medium':
+                    st.write("• **Structured Connect:** ER Manager confidential 1:1.")
                 else:
-                    st.write("• **Appreciation:** Nominate for performance award.") [cite: 25, 26]
-                st.markdown("</div>", unsafe_allow_html=True) [cite: 26]
+                    st.write("• **Growth Talk:** Bi-annual career roadmap discussion.")
+                st.markdown("</div>", unsafe_allow_html=True)
         else:
-            st.error("EMPID not found.") [cite: 26]
+            st.error("EMPID not found in Database.")
 
 # --- PAGE 3: ER LOGIN ---
 elif st.session_state['current_page'] == "ER Login":
     st.title("👤 ER Manager Portal")
+    st.markdown("#### Dedicated Dashboard for Mapped Employee Oversight")
+    
     er_id = st.number_input("Enter ER Manager ID", min_value=0, step=1)
+    
     if er_id:
-        if 'ER manager ID' in df.columns and er_id in df['ER manager ID'].values:
-            manager_df = df[df['ER manager ID'] == er_id]
+        er_col = 'ER manager ID'
+        if er_col in df.columns and er_id in df[er_col].values:
+            manager_df = df[df[er_col] == er_id]
             high_risk_df = manager_df[manager_df['Risk_Level'] == 'High']
+            
+            st.divider()
             st.metric("Total High Risk Employees Mapped", len(high_risk_df))
+            
             if st.button("🔍 View High Risk Employee List"):
                 st.session_state['show_er_list'] = True
+            
             if st.session_state.get('show_er_list'):
-                for _, row in high_risk_df.iterrows():
-                    c1, c2, c3 = st.columns([1, 1, 1])
-                    c1.write(f"**EMPID:** {row['EMPID']}")
-                    c2.write(f"**Risk:** {row['Attrition_Risk_Percentage']}%")
-                    if c3.button("Analyze", key=f"er_{row['EMPID']}"):
-                        st.session_state['selected_empid'] = row['EMPID']
-                        st.session_state['current_page'] = "Employee risk indicator"
-                        st.rerun()
+                if not high_risk_df.empty:
+                    st.markdown("### High Risk Dashboard")
+                    for idx, row in high_risk_df.iterrows():
+                        c1, c2, c3 = st.columns([1, 1, 1])
+                        c1.write(f"**EMPID:** {row['EMPID']}")
+                        c2.write(f"**Risk:** {row['Attrition_Risk_Percentage']}%")
+                        if c3.button("View Analysis", key=f"er_btn_{row['EMPID']}"):
+                            st.session_state['selected_empid'] = row['EMPID']
+                            st.session_state['current_page'] = "Employee risk indicator"
+                            st.rerun()
+                else:
+                    st.success("No high-risk employees found for your ID.")
         else:
-            st.error("Manager ID not found.")
+            st.error("Manager ID not found in the database.")
