@@ -7,7 +7,7 @@ import os
 # --- 1. CONFIGURATION ---
 st.set_page_config(page_title="iRetain | Workforce Analytics", layout="wide")
 
-# --- 2. REFINED PROFESSIONAL UI CSS ---
+# --- 2. PROFESSIONAL CLEAN UI CSS ---
 st.markdown("""
     <style>
     .main { background-color: #FFFFFF; color: #333333; }
@@ -17,27 +17,33 @@ st.markdown("""
     .centered-title { text-align: center; color: #003366; font-family: 'Segoe UI', Arial; font-weight: bold; margin-bottom: 20px; }
     .section-header { color: #000000; font-weight: bold; font-size: 20px; margin-bottom: 15px; }
 
+    /* Metric Boxes - Orange with White Text */
     .metric-container { background-color: #f37021; padding: 15px; border-radius: 8px; text-align: center; color: white; }
     .metric-value { font-size: 26px; font-weight: bold; color: white; }
     .metric-label { font-size: 14px; color: white; }
 
-    .quadrant-box { background-color: #FFFFFF; border-radius: 8px; border: 1px solid #EEEEEE; margin-bottom: 10px; overflow: hidden; }
+    /* Quadrant Box Styling */
+    .quadrant-box { background-color: #FFFFFF; padding: 0px; border-radius: 8px; border: 1px solid #EEEEEE; margin-bottom: 10px; overflow: hidden; }
     .zone-header { background-color: #f37021; color: white; padding: 10px; font-size: 24px; font-weight: bold; text-align: center; }
 
+    /* Detail Page Styling */
     .risk-box { padding: 30px; border-radius: 20px; text-align: center; border: 2px solid; background: #FAFAFA; margin-bottom: 25px; }
     .big-font { font-size: 70px !important; font-weight: bold; }
-    .report-card { background: #FFFFFF; padding: 25px; border-radius: 15px; border-left: 5px solid #f37021; border: 1px solid #EEE; margin-bottom: 20px; }
+    .report-card { background: #FFFFFF; padding: 25px; border-radius: 15px; border-left: 5px solid #f37021; border-top: 1px solid #EEE; border-right: 1px solid #EEE; border-bottom: 1px solid #EEE; margin-bottom: 20px; }
 
+    /* Button Styling */
     div.stButton > button { background-color: #f37021 !important; color: white !important; border-radius: 4px; border: none; width: 100%; font-weight: 600; }
     .large-btn-container div.stButton > button { padding: 15px 10px !important; font-size: 18px !important; height: 60px !important; }
     .small-btn-container div.stButton > button { padding: 5px !important; font-size: 13px !important; height: auto !important; margin-bottom: 8px; }
+    
+    .chart-container { padding: 5px; }
     </style>
     """, unsafe_allow_html=True)
 
 # --- 3. DATA LOADING ---
 @st.cache_data
 def load_data():
-    file_path = 'Attrition project.csv'
+    file_path = 'Attrition (1).csv'
     if not os.path.exists(file_path):
         st.error(f"⚠️ File Not Found: {file_path}")
         st.stop()
@@ -90,7 +96,7 @@ if st.session_state['current_page'] == "Zone wise turnover prediction":
         grid_rows = [st.columns(2), st.columns(2)]
         for i, zone in enumerate(zones):
             with grid_rows[i // 2][i % 2]:
-                st.markdown(f"<div class='quadrant-box'><div class='zone-header'>{zone}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='quadrant-box'><div class='zone-header'>{zone}</div><div class='chart-container'>", unsafe_allow_html=True)
                 zone_data = df[(df['ZONE'].str.capitalize() == zone) & (df['Risk_Level'] == st.session_state['risk_filter'])]
                 if not zone_data.empty:
                     counts = zone_data['MAIN_GROUP'].value_counts()
@@ -106,9 +112,10 @@ if st.session_state['current_page'] == "Zone wise turnover prediction":
                         ax.text(bar.get_x() + bar.get_width()/2., height + (max_v * 0.02), label, ha='center', va='bottom', fontsize=9, fontweight='bold')
                     ax.set_facecolor('#FFFFFF')
                     ax.tick_params(axis='x', rotation=45, labelsize=8)
+                    ax.set_ylabel("Count", fontsize=9)
                     st.pyplot(fig)
-                else: st.write("No data found.")
-                st.markdown("</div>", unsafe_allow_html=True)
+                else: st.write("No data found for this selection.")
+                st.markdown("</div></div>", unsafe_allow_html=True)
 
     with col_legend:
         st.write("**Risk View Filter**")
@@ -138,31 +145,46 @@ elif st.session_state['current_page'] == "Employee risk indicator":
         user_data = df[df['EMPID'] == emp_id]
         if not user_data.empty:
             row = user_data.iloc[0]
-            score, level = row.get('Attrition_Risk_Percentage', 0), row.get('Risk_Level', 'Low')
+            score = row.get('Attrition_Risk_Percentage', 0)
+            level = row.get('Risk_Level', 'Low')
             h_color = "#D7191C" if level == 'High' else ("#FFCC00" if level == 'Medium' else "#28A745")
-            st.markdown(f"<div class='risk-box' style='border-color: {h_color}; color: {h_color};'><p class='big-font'>{score}%</p><h1>{level.upper()} RISK</h1></div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='risk-box' style='border-color: {h_color}; color: {h_color};'><p class='big-font'>{score:.1f}%</p><h1>{level.upper()} RISK</h1></div>", unsafe_allow_html=True)
             
             st.subheader("📋 Employee Profile Details")
             c1, c2, c3 = st.columns(3)
             with c1: 
-                st.write(f"**EMPID:** {row['EMPID']}"); st.write(f"**Grade:** {row['GRADE']}")
+                st.write(f"**EMPID:** {row['EMPID']}")
+                st.write(f"**Grade:** {row['GRADE']}")
                 st.write(f"**Work Location:** {row.get('Work_Location', 'N/A')}")
             with c2: 
-                st.write(f"**Age:** {row['AGE']}"); st.write(f"**Tenure:** {row['TENURE_YRS']} Yrs")
+                st.write(f"**Age:** {row['AGE']}")
+                st.write(f"**Tenure:** {row['TENURE_YRS']} Yrs")
                 st.write(f"**Home Location:** {row.get('Home_Location', 'N/A')}")
-            with c3: st.write(f"**Zone:** {row['ZONE']}"); st.write(f"**Group:** {row['MAIN_GROUP']}")
+            with c3: 
+                st.write(f"**Zone:** {row['ZONE']}")
+                st.write(f"**Group:** {row['MAIN_GROUP']}")
 
             st.divider()
             col_a, col_b = st.columns(2)
             with col_a:
                 st.markdown("<div class='report-card'><h4>🔍 Risk Factor Analysis</h4>", unsafe_allow_html=True)
-                if level == 'High': st.write("• Vulnerable segment: 3-5yr tenure bracket [cite: 1, 2]."); st.write("• High Distance factor detected[cite: 3].")
-                else: st.write("• Stable tenure-to-age ratio[cite: 3].")
+                if level == 'High': 
+                    st.write("• Profile falls within Critical Attrition Window (3-5 years).")
+                    st.write("• High Distance/Tenure ratio detected.")
+                elif level == 'Medium':
+                    st.write("• Mid-tenure engagement dip detected.")
+                else: 
+                    st.write("• Stable organizational anchoring.")
                 st.markdown("</div>", unsafe_allow_html=True)
             with col_b:
                 st.markdown(f"<div class='report-card' style='border-left-color: {h_color};'><h4>🚀 Mitigation Actionables</h4>", unsafe_allow_html=True)
-                if level == 'High': st.write("• Urgent 1:1 visit [cite: 3]."); st.write("• Senior mentorship[cite: 3].")
-                else: st.write("• Performance nomination[cite: 3].")
+                if level == 'High': 
+                    st.write("• **ER Intervention:** Urgent 1:1 visit required.")
+                    st.write("• **Mentorship:** Pair with senior leader.")
+                elif level == 'Medium':
+                    st.write("• **Structured Connect:** ER Manager confidential 1:1.")
+                else: 
+                    st.write("• **Appreciation:** Nominate for performer award.")
                 st.markdown("</div>", unsafe_allow_html=True)
         else: st.error("EMPID not found.")
 
@@ -188,17 +210,21 @@ elif st.session_state['current_page'] == "ER Login":
             st.divider()
             with st.expander("Show High Risk Employees"):
                 if not mapped_high_risk_df.empty:
-                    st.write("Click an EMPID to view analysis.")
-                    h = st.columns([1, 2, 1, 1])
-                    h[0].write("**EMPID**"); h[1].write("**Group**"); h[2].write("**Grade**"); h[3].write("**Risk %**")
-                    for i, (idx, row) in enumerate(mapped_high_risk_df.iterrows()):
+                    st.write("Click an EMPID to view detail analysis.")
+                    header = st.columns([1, 2, 1, 1])
+                    header[0].write("**EMPID**"); header[1].write("**Group**"); header[2].write("**Grade**"); header[3].write("**Risk %**")
+                    
+                    for i, (index, row) in enumerate(mapped_high_risk_df.iterrows()):
                         cols = st.columns([1, 2, 1, 1])
-                        color = "red" if i < 5 else "black"
+                        risk_color = "red" if i < 5 else "black"
+                        
                         if cols[0].button(str(row['EMPID']), key=f"btn_{row['EMPID']}"):
                             st.session_state['selected_empid'] = row['EMPID']
                             st.session_state['current_page'] = "Employee risk indicator"
                             st.rerun()
-                        for j, val in enumerate([row['MAIN_GROUP'], row['GRADE'], f"{row['Attrition_Risk_Percentage']}%"]):
-                            cols[j+1].markdown(f"<span style='color:{color}'>{val}</span>", unsafe_allow_html=True)
-                else: st.success("No high-risk employees found[cite: 3].")
+                        
+                        cols[1].markdown(f"<span style='color:{risk_color}'>{row['MAIN_GROUP']}</span>", unsafe_allow_html=True)
+                        cols[2].markdown(f"<span style='color:{risk_color}'>{row['GRADE']}</span>", unsafe_allow_html=True)
+                        cols[3].markdown(f"<span style='color:{risk_color}'>{row['Attrition_Risk_Percentage']:.1f}%</span>", unsafe_allow_html=True)
+                else: st.success("No high-risk employees mapped to your portfolio.")
         else: st.error("Manager ID not found.")
