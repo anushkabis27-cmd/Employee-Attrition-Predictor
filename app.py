@@ -7,7 +7,7 @@ import os
 # --- 1. CONFIGURATION ---
 st.set_page_config(page_title="iRetain | Workforce Analytics", layout="wide")
 
-# --- 2. PROFESSIONAL CLEAN UI CSS ---
+# --- 2. REFINED PROFESSIONAL UI CSS ---
 st.markdown("""
     <style>
     .main { background-color: #FFFFFF; color: #333333; }
@@ -160,12 +160,12 @@ elif st.session_state['current_page'] == "Employee risk indicator":
             col_a, col_b = st.columns(2)
             with col_a:
                 st.markdown("<div class='report-card'><h4>🔍 Risk Factor Analysis</h4>", unsafe_allow_html=True)
-                if level == 'High': st.write("• Critical Attrition Window (3-5 years) ."); st.write("• High Distance/Tenure ratio.")
+                if level == 'High': st.write("• Critical Attrition Window (3-5 years)."); st.write("• High Distance/Tenure ratio.")
                 else: st.write("• Stable tenure-to-age ratio.")
                 st.markdown("</div>", unsafe_allow_html=True)
             with col_b:
                 st.markdown(f"<div class='report-card' style='border-left-color: {h_color};'><h4>🚀 Mitigation Actionables</h4>", unsafe_allow_html=True)
-                if level == 'High': st.write("• **ER Intervention:** Urgent 1:1 visit ."); st.write("• **Mentorship:** Pair with senior leader.")
+                if level == 'High': st.write("• **ER Intervention:** Urgent 1:1 visit."); st.write("• **Mentorship:** Pair with senior leader.")
                 else: st.write("• **Appreciation:** Nominate for award.")
                 st.markdown("</div>", unsafe_allow_html=True)
         else: st.error("EMPID not found.")
@@ -178,26 +178,37 @@ elif st.session_state['current_page'] == "ER Login":
     if er_id:
         if 'ER manager ID' in df.columns and er_id in df['ER manager ID'].values:
             manager_df = df[df['ER manager ID'] == er_id]
-            mapped_high_risk = manager_df[manager_df['Risk_Level'] == 'High']
+            mapped_total = len(manager_df)
+            mapped_high_risk_df = manager_df[manager_df['Risk_Level'] == 'High'].sort_values(by='Attrition_Risk_Percentage', ascending=False)
+            mapped_high_risk_count = len(mapped_high_risk_df)
+            mapped_high_risk_pct = (mapped_high_risk_count / mapped_total * 100) if mapped_total > 0 else 0
             
-            st.markdown("<div class='section-header'>High Risk Profiling</div>", unsafe_allow_html=True)
+            st.markdown("<div class='section-header'>Portfolio High Risk Profiling</div>", unsafe_allow_html=True)
             m1, m2, m3 = st.columns(3)
-            with m1: st.markdown(f"<div class='metric-container'><div class='metric-label'>Bank Total Employees</div><div class='metric-value'>{len(df)}</div></div>", unsafe_allow_html=True)
-            with m2: st.markdown(f"<div class='metric-container'><div class='metric-label'>Bank High Risk Count</div><div class='metric-value'>{len(df[df['Risk_Level'] == 'High'])}</div></div>", unsafe_allow_html=True)
-            with m3: st.markdown(f"<div class='metric-container'><div class='metric-label'>Your Mapped High Risk</div><div class='metric-value'>{len(mapped_high_risk)}</div></div>", unsafe_allow_html=True)
+            with m1: st.markdown(f"<div class='metric-container'><div class='metric-label'>Employees Mapped</div><div class='metric-value'>{mapped_total}</div></div>", unsafe_allow_html=True)
+            with m2: st.markdown(f"<div class='metric-container'><div class='metric-label'>High Risk Count</div><div class='metric-value'>{mapped_high_risk_count}</div></div>", unsafe_allow_html=True)
+            with m3: st.markdown(f"<div class='metric-container'><div class='metric-label'>High Risk (%)</div><div class='metric-value'>{mapped_high_risk_pct:.1f}%</div></div>", unsafe_allow_html=True)
 
             st.divider()
             with st.expander("Show High Risk Employees"):
-                if not mapped_high_risk.empty:
+                if not mapped_high_risk_df.empty:
                     st.write("Click an EMPID to view detail analysis.")
                     header = st.columns([1, 2, 1, 1])
                     header[0].write("**EMPID**"); header[1].write("**Group**"); header[2].write("**Grade**"); header[3].write("**Risk %**")
-                    for _, row in mapped_high_risk.iterrows():
+                    
+                    for i, (index, row) in enumerate(mapped_high_risk_df.iterrows()):
                         cols = st.columns([1, 2, 1, 1])
+                        
+                        # Top 5 highlighted in Red text
+                        risk_color = "red" if i < 5 else "black"
+                        
                         if cols[0].button(str(row['EMPID']), key=f"btn_{row['EMPID']}"):
                             st.session_state['selected_empid'] = row['EMPID']
                             st.session_state['current_page'] = "Employee risk indicator"
                             st.rerun()
-                        cols[1].write(row['MAIN_GROUP']); cols[2].write(row['GRADE']); cols[3].write(f"{row['Attrition_Risk_Percentage']}%")
-                else: st.success("No high-risk employees mapped to your ID.")
+                        
+                        cols[1].markdown(f"<span style='color:{risk_color}'>{row['MAIN_GROUP']}</span>", unsafe_allow_html=True)
+                        cols[2].markdown(f"<span style='color:{risk_color}'>{row['GRADE']}</span>", unsafe_allow_html=True)
+                        cols[3].markdown(f"<span style='color:{risk_color}'>{row['Attrition_Risk_Percentage']}%</span>", unsafe_allow_html=True)
+                else: st.success("No high-risk employees mapped to your portfolio.")
         else: st.error("Manager ID not found.")
