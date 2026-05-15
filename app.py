@@ -1,5 +1,5 @@
 import streamlit as st
-import pd as pd
+import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import os
@@ -23,12 +23,12 @@ st.markdown("""
         margin-bottom: 20px;
     }
 
-    /* Section Header - Updated to Black */
+    /* Section Header - Black */
     .section-header {
         color: #000000;
         font-weight: bold;
         font-size: 20px;
-        margin-bottom: 10px;
+        margin-bottom: 15px;
     }
 
     /* Metric Boxes - Orange with White Text */
@@ -52,12 +52,12 @@ st.markdown("""
         overflow: hidden;
     }
 
-    /* Orange Zone Header */
+    /* Orange Zone Header - Bigger Font */
     .zone-header {
         background-color: #f37021;
         color: white;
-        padding: 8px;
-        font-size: 22px;
+        padding: 10px;
+        font-size: 24px;
         font-weight: bold;
         text-align: center;
     }
@@ -72,12 +72,12 @@ st.markdown("""
         font-weight: 600;
     }
     
-    /* Small buttons for Numbers/Percentage - Removed Box look */
+    /* Small buttons for Numbers/Percentage */
     .small-btn-container div.stButton > button {
         padding: 5px !important;
         font-size: 13px !important;
         height: auto !important;
-        margin-bottom: 5px;
+        margin-bottom: 8px;
     }
 
     /* Large buttons for Risk Filters */
@@ -129,7 +129,7 @@ if st.session_state['current_page'] == "Zone wise turnover prediction":
     col_content, col_legend = st.columns([4, 1.2])
 
     with col_content:
-        # Header updated to black via CSS class
+        # Black header
         st.markdown("<div class='section-header'>High Risk Profiling</div>", unsafe_allow_html=True)
         
         total_emp = len(df)
@@ -144,11 +144,11 @@ if st.session_state['current_page'] == "Zone wise turnover prediction":
         st.divider()
         st.write(f"#### Group wise - Risk: {st.session_state['risk_filter']} Level")
         
+        # Color Mapping
         color_map = {'High': '#D7191C', 'Medium': '#FFCC00', 'Low': '#28A745'}
         current_color = color_map[st.session_state['risk_filter']]
 
         zones = ['North', 'South', 'East', 'West']
-        # Create grid
         row1 = st.columns(2)
         row2 = st.columns(2)
         all_cols = row1 + row2
@@ -183,7 +183,7 @@ if st.session_state['current_page'] == "Zone wise turnover prediction":
                 st.markdown("</div></div>", unsafe_allow_html=True)
 
     with col_legend:
-        # Buttons without container boxes
+        # Simple buttons, no containers
         st.markdown('<div class="small-btn-container">', unsafe_allow_html=True)
         if st.button("In Numbers"): st.session_state['view_mode'] = 'Numbers'
         if st.button("In Percentage"): st.session_state['view_mode'] = 'Percentage'
@@ -199,7 +199,7 @@ if st.session_state['current_page'] == "Zone wise turnover prediction":
         if st.button("Low Risk"): st.session_state['risk_filter'] = 'Low'
         st.markdown('</div>', unsafe_allow_html=True)
 
-# --- PAGE 2 & 3: Remaining Logic ---
+# --- PAGE 2 & 3: Standard Navigation Placeholder ---
 elif st.session_state['current_page'] == "Employee risk indicator":
     st.title("Employee risk indicator")
     emp_input = st.number_input("Enter EMPID", min_value=0)
@@ -211,5 +211,5 @@ elif st.session_state['current_page'] == "Employee risk indicator":
 elif st.session_state['current_page'] == "ER Login":
     st.title("ER Manager Portal")
     er_id = st.number_input("Enter ER Manager ID", min_value=0)
-    if 'ER manager ID' in df.columns and er_id in df['ER manager ID'].values:
+    if er_id in df['ER manager ID'].values:
         st.success(f"Access granted for Manager {er_id}")
