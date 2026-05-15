@@ -52,7 +52,7 @@ st.markdown("""
         overflow: hidden;
     }
 
-    /* Orange Zone Header - Bigger Font */
+    /* Orange Zone Header */
     .zone-header {
         background-color: #f37021;
         color: white;
@@ -72,19 +72,19 @@ st.markdown("""
         font-weight: 600;
     }
     
+    /* Large buttons for Risk Filters */
+    .large-btn-container div.stButton > button {
+        padding: 15px 10px !important;
+        font-size: 18px !important;
+        height: 60px !important;
+    }
+
     /* Small buttons for Numbers/Percentage */
     .small-btn-container div.stButton > button {
         padding: 5px !important;
         font-size: 13px !important;
         height: auto !important;
         margin-bottom: 8px;
-    }
-
-    /* Large buttons for Risk Filters */
-    .large-btn-container div.stButton > button {
-        padding: 15px 10px !important;
-        font-size: 18px !important;
-        height: 60px !important;
     }
     
     .chart-container { padding: 5px; }
@@ -129,7 +129,6 @@ if st.session_state['current_page'] == "Zone wise turnover prediction":
     col_content, col_legend = st.columns([4, 1.2])
 
     with col_content:
-        # Black header
         st.markdown("<div class='section-header'>High Risk Profiling</div>", unsafe_allow_html=True)
         
         total_emp = len(df)
@@ -144,7 +143,6 @@ if st.session_state['current_page'] == "Zone wise turnover prediction":
         st.divider()
         st.write(f"#### Group wise - Risk: {st.session_state['risk_filter']} Level")
         
-        # Color Mapping
         color_map = {'High': '#D7191C', 'Medium': '#FFCC00', 'Low': '#28A745'}
         current_color = color_map[st.session_state['risk_filter']]
 
@@ -183,13 +181,7 @@ if st.session_state['current_page'] == "Zone wise turnover prediction":
                 st.markdown("</div></div>", unsafe_allow_html=True)
 
     with col_legend:
-        # Simple buttons, no containers
-        st.markdown('<div class="small-btn-container">', unsafe_allow_html=True)
-        if st.button("In Numbers"): st.session_state['view_mode'] = 'Numbers'
-        if st.button("In Percentage"): st.session_state['view_mode'] = 'Percentage'
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        st.divider()
+        # Risk Filters First
         st.write("**Risk View Filter**")
         st.markdown('<div class="large-btn-container">', unsafe_allow_html=True)
         if st.button("High Risk"): st.session_state['risk_filter'] = 'High'
@@ -199,7 +191,15 @@ if st.session_state['current_page'] == "Zone wise turnover prediction":
         if st.button("Low Risk"): st.session_state['risk_filter'] = 'Low'
         st.markdown('</div>', unsafe_allow_html=True)
 
-# --- PAGE 2 & 3: Standard Navigation Placeholder ---
+        st.divider()
+
+        # Numbers/Percentage Buttons Second
+        st.markdown('<div class="small-btn-container">', unsafe_allow_html=True)
+        if st.button("In Numbers"): st.session_state['view_mode'] = 'Numbers'
+        if st.button("In Percentage"): st.session_state['view_mode'] = 'Percentage'
+        st.markdown('</div>', unsafe_allow_html=True)
+
+# --- PAGE 2 & 3: Standard Placeholder Logic ---
 elif st.session_state['current_page'] == "Employee risk indicator":
     st.title("Employee risk indicator")
     emp_input = st.number_input("Enter EMPID", min_value=0)
@@ -211,5 +211,5 @@ elif st.session_state['current_page'] == "Employee risk indicator":
 elif st.session_state['current_page'] == "ER Login":
     st.title("ER Manager Portal")
     er_id = st.number_input("Enter ER Manager ID", min_value=0)
-    if er_id in df['ER manager ID'].values:
+    if 'ER manager ID' in df.columns and er_id in df['ER manager ID'].values:
         st.success(f"Access granted for Manager {er_id}")
