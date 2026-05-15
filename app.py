@@ -1,116 +1,118 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import os
 
-# --- iRetain CONFIG ---
-st.set_page_config(page_title="iRetain | ICICI Bank", layout="wide", initial_sidebar_state="collapsed")
-
-# Professional Color Palette
-ICICI_ORANGE = "#f37021"
-ICICI_MAROON = "#8b191d"
-ICICI_BLUE = "#003366"
-
-# --- LOGO LOGIC ---
-LOGO_FILE = "icicibanklogo.png"
-LOGO_PATH = LOGO_FILE if os.path.exists(LOGO_FILE) else "https://www.icicibank.com/assets/images/logo.png"
-
-# --- DATA LOADER ---
+# Load the dataset
 @st.cache_data
 def load_data():
-    file_path = 'Attrition_Final_Production_v8_Final_Analysis.xlsx'
-    if not os.path.exists(file_path):
-        st.error(f"Critical Error: Data file '{file_path}' not found.")
-        st.stop()
-    df = pd.read_excel(file_path, sheet_name=0)
-    df.columns = df.columns.str.strip()
-    if 'Risk_Score' not in df.columns:
-        df['Risk_Score'] = df.get('Attrition_Risk_Percentage', df.get('Attrition Risk (%)', 0))
-    return df[df['Status'].str.upper() == 'ACTIVE'].copy()
+    df = pd.read_csv('Attrition.csv')
+    return df
 
 df = load_data()
 
-if 'page' not in st.session_state:
-    st.session_state.page = "Cover"
-
-# --- CSS FOR GLOSSY COVER & ACCENTED TABS ---
-if st.session_state.page == "Cover":
-    st.markdown(f"""
-        <style>
-            [data-testid="stSidebar"] {{display: none;}}
-            [data-testid="collapsedControl"] {{display: none;}}
-            
-            /* Glossy Diagonal Background */
-            .stApp {{
-                background: linear-gradient(135deg, {ICICI_ORANGE} 0%, #ff8c42 50%, {ICICI_ORANGE} 100%) !important;
-                background-size: cover;
-            }}
-            
-            /* iRetain Title - Bold White */
-            .cover-title {{ text-align: center; color: white; font-size: 130px; font-weight: 900; margin-top: 10px; letter-spacing: -3px; line-height: 1.1; font-family: 'Trebuchet MS', sans-serif; }}
-            
-            /* Subtitle - Bold White */
-            .cover-subtitle {{ text-align: center; color: white; font-size: 52px; margin-bottom: 60px; font-weight: 800; line-height: 1.1; padding: 0 5%; font-family: 'Arial', sans-serif; }}
-            
-            /* Maroon Buttons with Thick Left Bar & Internal Descriptions */
-            div.stButton > button {{
-                background-color: {ICICI_MAROON} !important;
-                color: white !important;
-                border: none !important;
-                border-left: 15px solid #5a0d0f !important;
-                padding: 40px 20px !important;
-                border-radius: 4px 15px 15px 4px !important;
-                height: 350px !important;
-                width: 100% !important;
-                box-shadow: 0 10px 25px rgba(0,0,0,0.2) !important;
-                transition: all 0.3s ease !important;
-                display: flex !important;
-                flex-direction: column !important;
-                align-items: center !important;
-                justify-content: center !important;
-                text-align: center !important;
-                font-family: 'Georgia', serif;
-            }}
-            div.stButton > button:hover {{
-                transform: translateY(-10px) !important;
-                box-shadow: 0 15px 30px rgba(0,0,0,0.3) !important;
-                filter: brightness(1.1);
-            }}
-        </style>
-    """, unsafe_allow_html=True)
-else:
-    st.markdown("""<style>.stApp { background-color: white !important; color: black; }</style>""", unsafe_allow_html=True)
-
-# --- PAGE ROUTING ---
-
-# 1. COVER PAGE
-if st.session_state.page == "Cover":
-    col_logo, col_slogan = st.columns([1, 1])
-    with col_logo:
-        st.image(LOGO_PATH, width=300)
-    with col_slogan:
-        st.markdown(f"<div style='text-align: right; color: white; font-size: 26px; font-weight: 900; margin-top: 25px;'><b>Predict. Prevent. Retain</b></div>", unsafe_allow_html=True)
-
-    st.markdown("<h1 class='cover-title'>iRetain</h1>", unsafe_allow_html=True)
-    st.markdown("<p class='cover-subtitle'><b>The Intelligent Workforce Turnover Risk Analyzer</b></p>", unsafe_allow_html=True)
+# Helper function to generate reasons and actionables (Placeholder logic)
+def get_insights(row):
+    reasons = []
+    actions = []
     
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        if st.button("ZONE-WISE RISK SUMMARY\n\nAn overview of Turnover Risk across 4 zones"):
-            st.session_state.page = "Summary"
-            st.rerun()
-    with c2:
-        if st.button("EMPLOYEE RISK PREDICTOR\n\nIdentify Risk. Improve Retention"):
-            st.session_state.page = "Predictor"
-            st.rerun()
-    with c3:
-        if st.button("ER LOGIN\n\nMonitor turnover risk in your portfolio"):
-            st.session_state.page = "Login"
-            st.rerun()
+    if row['Distance_From_Home_KM'] > 1000:
+        reasons.append("High Distance from Home")
+        actions.append("Discuss remote work options or relocation assistance.")
+    if row['TENURE_YRS'] < 2:
+        reasons.append("Early Career/Low Tenure")
+        actions.append("Assign a mentor and conduct a 30-60-90 day feedback session.")
+    if row['Attrition_Risk_Percentage'] > 70:
+        reasons.append("High Statistical Probability (ML Model)")
+        actions.append("Immediate 1-on-1 meeting to discuss career growth and pain points.")
+    
+    if not reasons:
+        reasons = ["General Market Factors"]
+        actions = ["Regular engagement and performance recognition."]
+        
+    return ", ".join(reasons), ", ".join(actions)
 
-# 2. INTERNAL MODULE PAGES
-else:
-    st.sidebar.image(LOGO_PATH, width=200)
-    st.sidebar.title("Navigation")
-    # ... Rest of your internal logic for charts and predictors follows here ...
+# Initialize Session State for Navigation
+if 'current_page' not in st.session_state:
+    st.session_state['current_page'] = 'ER_Login'
+if 'selected_empid' not in st.session_state:
+    st.session_state['selected_empid'] = None
+
+# --- PAGE 2: EMPLOYEE RISK PREDICTOR (Detail View) ---
+def show_employee_details(empid):
+    st.button("⬅️ Back to ER Dashboard", on_click=lambda: st.session_state.update({"current_page": "ER_Login"}))
+    
+    emp_data = df[df['EMPID'] == empid].iloc[0]
+    reason, actionables = get_insights(emp_data)
+    
+    st.title(f"Employee Risk Predictor: {empid}")
+    
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Risk Percentage", f"{emp_data['Attrition_Risk_Percentage']}%")
+    col2.metric("Risk Level", emp_data['Risk_Level'])
+    col3.metric("Tenure", f"{emp_data['TENURE_YRS']} Yrs")
+
+    st.subheader("Employee Profile")
+    st.json({
+        "Grade": emp_data['GRADE'],
+        "Location": emp_data['Work_Location'],
+        "Zone": emp_data['ZONE'],
+        "Main Group": emp_data['MAIN_GROUP']
+    })
+
+    st.error(f"**Primary Reason for Risk:** {reason}")
+    st.success(f"**Recommended Actionables:** {actionables}")
+
+# --- PAGE 3: ER LOGIN ---
+def show_er_login():
+    st.title("ER Manager Login")
+    
+    manager_id = st.number_input("Enter your ER Manager ID", min_value=0, step=1, value=0)
+    
+    if st.button("Search"):
+        if manager_id in df['ER manager ID'].values:
+            st.session_state['manager_logged_in'] = manager_id
+            st.success(f"Welcome, Manager {manager_id}")
+        else:
+            st.error("Manager ID not found.")
+
+    if 'manager_logged_in' in st.session_state:
+        mid = st.session_state['manager_logged_in']
+        manager_df = df[df['ER manager ID'] == mid]
+        high_risk_count = len(manager_df[manager_df['Risk_Level'] == 'High'])
+        
+        st.divider()
+        st.subheader(f"Dashboard for Manager ID: {mid}")
+        
+        # Display Summary Metric
+        st.metric("Total Employees in High Risk Category", high_risk_count)
+        
+        # Button to show the list
+        if st.button("View High Risk Employees List"):
+            st.session_state['show_list'] = True
+            
+        if st.session_state.get('show_list'):
+            high_risk_list = manager_df[manager_df['Risk_Level'] == 'High']
+            
+            if not high_risk_list.empty():
+                st.write("Click on an Employee ID to view detailed risk analysis:")
+                
+                # Create a list of buttons for each employee
+                for index, row in high_risk_list.iterrows():
+                    emp_id = row['EMPID']
+                    risk_pct = row['Attrition_Risk_Percentage']
+                    
+                    # Using columns to make it look like a list
+                    c1, c2, c3 = st.columns([2, 2, 1])
+                    c1.write(f"**EMPID:** {emp_id}")
+                    c2.write(f"**Risk:** {risk_pct}%")
+                    if c3.button("View Details", key=f"btn_{emp_id}"):
+                        st.session_state['selected_empid'] = emp_id
+                        st.session_state['current_page'] = 'Risk_Predictor'
+                        st.rerun()
+            else:
+                st.info("No high-risk employees mapped to your ID.")
+
+# --- MAIN APP LOGIC ---
+if st.session_state['current_page'] == 'ER_Login':
+    show_er_login()
+elif st.session_state['current_page'] == 'Risk_Predictor':
+    show_employee_details(st.session_state['selected_empid'])
