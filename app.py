@@ -1,13 +1,13 @@
 import streamlit as st
-import pandas as pd
+import pd as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import os
 
-# --- 1. CONFIGURATION (MUST BE FIRST) ---
+# --- 1. CONFIGURATION ---
 st.set_page_config(page_title="iRetain | Workforce Analytics", layout="wide")
 
-# --- 2. PROFESSIONAL CLEAN UI CSS ---
+# --- 2. REFINED PROFESSIONAL UI CSS ---
 st.markdown("""
     <style>
     .main { background-color: #FFFFFF; color: #333333; }
@@ -23,9 +23,9 @@ st.markdown("""
         margin-bottom: 20px;
     }
 
-    /* Section Headers */
+    /* Section Header - Updated to Black */
     .section-header {
-        color: #f37021;
+        color: #000000;
         font-weight: bold;
         font-size: 20px;
         margin-bottom: 10px;
@@ -69,28 +69,26 @@ st.markdown("""
         border-radius: 4px;
         border: none;
         width: 100%;
+        font-weight: 600;
     }
     
-    /* Small buttons for Numbers/Percentage */
-    .small-btn div.stButton > button {
-        padding: 2px 5px !important;
-        font-size: 12px !important;
-        height: 32px !important;
+    /* Small buttons for Numbers/Percentage - Removed Box look */
+    .small-btn-container div.stButton > button {
+        padding: 5px !important;
+        font-size: 13px !important;
+        height: auto !important;
+        margin-bottom: 5px;
     }
 
     /* Large buttons for Risk Filters */
-    .large-btn div.stButton > button {
+    .large-btn-container div.stButton > button {
         padding: 15px 10px !important;
         font-size: 18px !important;
-        font-weight: bold !important;
         height: 60px !important;
     }
     
     .chart-container { padding: 5px; }
     hr { margin-top: 10px !important; margin-bottom: 10px !important; }
-
-    /* Report cards for details */
-    .report-card { background: #FFFFFF; padding: 25px; border-radius: 15px; border-left: 5px solid #f37021; border-top: 1px solid #EEE; border-right: 1px solid #EEE; border-bottom: 1px solid #EEE; margin-bottom: 20px; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -131,6 +129,7 @@ if st.session_state['current_page'] == "Zone wise turnover prediction":
     col_content, col_legend = st.columns([4, 1.2])
 
     with col_content:
+        # Header updated to black via CSS class
         st.markdown("<div class='section-header'>High Risk Profiling</div>", unsafe_allow_html=True)
         
         total_emp = len(df)
@@ -149,12 +148,13 @@ if st.session_state['current_page'] == "Zone wise turnover prediction":
         current_color = color_map[st.session_state['risk_filter']]
 
         zones = ['North', 'South', 'East', 'West']
-        row1_cols = st.columns(2)
-        row2_cols = st.columns(2)
-        all_display_cols = row1_cols + row2_cols
+        # Create grid
+        row1 = st.columns(2)
+        row2 = st.columns(2)
+        all_cols = row1 + row2
 
         for i, zone in enumerate(zones):
-            with all_display_cols[i]:
+            with all_cols[i]:
                 st.markdown(f"<div class='quadrant-box'><div class='zone-header'>{zone}</div><div class='chart-container'>", unsafe_allow_html=True)
                 
                 zone_data = df[(df['ZONE'].str.capitalize() == zone) & (df['Risk_Level'] == st.session_state['risk_filter'])]
@@ -176,21 +176,22 @@ if st.session_state['current_page'] == "Zone wise turnover prediction":
                     ax.set_facecolor('#FFFFFF')
                     ax.tick_params(axis='x', rotation=45, labelsize=8)
                     ax.set_ylabel("Count", fontsize=9)
+                    ax.set_xlabel("")
                     st.pyplot(fig)
                 else:
-                    st.write("No data found.")
+                    st.write("No data found for this selection.")
                 st.markdown("</div></div>", unsafe_allow_html=True)
 
     with col_legend:
-        st.markdown('<div class="small-btn">', unsafe_allow_html=True)
+        # Buttons without container boxes
+        st.markdown('<div class="small-btn-container">', unsafe_allow_html=True)
         if st.button("In Numbers"): st.session_state['view_mode'] = 'Numbers'
-        st.write("")
         if st.button("In Percentage"): st.session_state['view_mode'] = 'Percentage'
         st.markdown('</div>', unsafe_allow_html=True)
         
         st.divider()
         st.write("**Risk View Filter**")
-        st.markdown('<div class="large-btn">', unsafe_allow_html=True)
+        st.markdown('<div class="large-btn-container">', unsafe_allow_html=True)
         if st.button("High Risk"): st.session_state['risk_filter'] = 'High'
         st.write("")
         if st.button("Medium Risk"): st.session_state['risk_filter'] = 'Medium'
@@ -198,7 +199,7 @@ if st.session_state['current_page'] == "Zone wise turnover prediction":
         if st.button("Low Risk"): st.session_state['risk_filter'] = 'Low'
         st.markdown('</div>', unsafe_allow_html=True)
 
-# --- PAGE 2 & 3: Standard Placeholder Logic ---
+# --- PAGE 2 & 3: Remaining Logic ---
 elif st.session_state['current_page'] == "Employee risk indicator":
     st.title("Employee risk indicator")
     emp_input = st.number_input("Enter EMPID", min_value=0)
@@ -210,5 +211,5 @@ elif st.session_state['current_page'] == "Employee risk indicator":
 elif st.session_state['current_page'] == "ER Login":
     st.title("ER Manager Portal")
     er_id = st.number_input("Enter ER Manager ID", min_value=0)
-    if er_id in df['ER manager ID'].values:
+    if 'ER manager ID' in df.columns and er_id in df['ER manager ID'].values:
         st.success(f"Access granted for Manager {er_id}")
