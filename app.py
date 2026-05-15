@@ -4,15 +4,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 
-# --- 1. CONFIGURATION (MUST BE FIRST) ---
+# --- 1. CONFIGURATION ---
 st.set_page_config(page_title="iRetain | Workforce Analytics", layout="wide")
 
-# --- 2. PROFESSIONAL CLEAN UI CSS ---
+# --- 2. REFINED CLEAN UI CSS ---
 st.markdown("""
     <style>
     .main { background-color: #FFFFFF; color: #333333; }
     [data-testid="stSidebar"] { background-color: #f37021; }
     
+    /* Centered Main Title */
     .centered-title {
         text-align: center;
         color: #003366;
@@ -21,13 +22,15 @@ st.markdown("""
         margin-bottom: 30px;
     }
 
+    /* Section Headers */
     .section-header {
         color: #f37021;
         font-weight: bold;
-        font-size: 18px;
-        margin-bottom: 10px;
+        font-size: 20px;
+        margin-bottom: 15px;
     }
 
+    /* Metric Boxes */
     .metric-container {
         background-color: #FDFDFD;
         padding: 15px;
@@ -35,29 +38,42 @@ st.markdown("""
         border: 1px solid #E0E0E0;
         text-align: center;
     }
-    .metric-value { font-size: 22px; font-weight: bold; color: #333333; }
-    .metric-label { font-size: 13px; color: #666666; }
+    .metric-value { font-size: 24px; font-weight: bold; color: #333333; }
+    .metric-label { font-size: 14px; color: #666666; }
 
-    /* Orange Rounded Border for Risk Filters */
-    .filter-border {
-        border: 2px solid #f37021;
-        border-radius: 15px;
-        padding: 15px;
-        margin-bottom: 10px;
-        text-align: center;
-    }
-
+    /* Quadrant Box Styling */
     .quadrant-box {
         background-color: #FFFFFF;
-        padding: 15px;
+        padding: 0px;
         border-radius: 8px;
         border: 1px solid #EEEEEE;
         margin-bottom: 20px;
+        overflow: hidden;
+    }
+
+    /* Orange Zone Header */
+    .zone-header {
+        background-color: #f37021;
+        color: white;
+        padding: 10px;
+        font-size: 22px;
+        font-weight: bold;
+        text-align: center;
+    }
+
+    /* Global Button Styling - All Orange */
+    div.stButton > button {
+        background-color: #f37021 !important;
+        color: white !important;
+        border-radius: 4px;
+        font-weight: 600;
+        border: none;
+        width: 100%;
     }
     
-    div.stButton > button {
-        border-radius: 4px;
-        font-weight: 500;
+    /* Ensure charts don't overflow */
+    .chart-container {
+        padding: 10px;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -87,9 +103,10 @@ page = st.sidebar.radio("NAVIGATION", ["Zone wise turnover prediction", "Employe
 if page == "Zone wise turnover prediction":
     st.markdown("<h1 class='centered-title'>Zone-Wise Risk Summary</h1>", unsafe_allow_html=True)
     
-    col_content, col_legend = st.columns([4, 1])
+    col_content, col_legend = st.columns([4, 1.2])
 
     with col_content:
+        # Top Metrics Section
         st.markdown("<div class='section-header'>High Risk Profiling</div>", unsafe_allow_html=True)
         
         total_emp = len(df)
@@ -105,63 +122,83 @@ if page == "Zone wise turnover prediction":
         
         st.write(f"#### Departmental Risk: {st.session_state['risk_filter']} Level")
         
-        color_map = {'High': '#D7191C', 'Medium': '#FDAE61', 'Low': '#1A9641'}
+        # Correct Color Mapping
+        color_map = {'High': '#D7191C', 'Medium': '#FFCC00', 'Low': '#28A745'}
         current_color = color_map[st.session_state['risk_filter']]
 
         zones = ['North', 'South', 'East', 'West']
-        rows = [st.columns(2), st.columns(2)]
+        cols = st.columns(2)
         
         for i, zone in enumerate(zones):
-            col_idx = i % 2
-            row_idx = i // 2
-            with rows[row_idx][col_idx]:
-                st.markdown(f"<div class='quadrant-box'><b>📍 {zone} Zone</b>", unsafe_allow_html=True)
+            target_col = cols[i % 2] if i < 2 else st.columns(2)[i % 2]
+            # Handling row distribution for 2x2 grid
+            if i == 2:
+                row2 = st.columns(2)
+                target_col_1 = row2[0]
+                target_col_2 = row2[1]
+            
+            # Simplified Grid logic for streamlit
+            current_target = st.columns(2)[i%2] if i < 2 else st.columns(2)[i%2]
+
+        # Re-rendering in a stable 2x2 grid
+        row1 = st.columns(2)
+        row2 = st.columns(2)
+        all_cols = row1 + row2
+
+        for i, zone in enumerate(zones):
+            with all_cols[i]:
+                st.markdown(f"""
+                <div class='quadrant-box'>
+                    <div class='zone-header'>{zone}</div>
+                    <div class='chart-container'>
+                """, unsafe_allow_html=True)
                 
                 # Filter for zone and selected risk level
                 zone_data = df[(df['ZONE'].str.capitalize() == zone) & (df['Risk_Level'] == st.session_state['risk_filter'])]
                 
                 if not zone_data.empty:
-                    # Logic: We always plot the numbers, but change the label based on view_mode
                     counts = zone_data['MAIN_GROUP'].value_counts()
                     total_in_dept = df[df['ZONE'].str.capitalize() == zone]['MAIN_GROUP'].value_counts()
                     percentages = (counts / total_in_dept * 100).fillna(0)
 
-                    fig, ax = plt.subplots(figsize=(5, 3))
-                    # The bar itself represents the count for stability
+                    fig, ax = plt.subplots(figsize=(5, 3.5))
                     bars = ax.bar(counts.index, counts.values, color=current_color)
                     
-                    # Add exact count or percentage over each bar
+                    # Prevent text overflow by adjusting y-axis limit
+                    max_val = max(counts.values) if not counts.empty else 10
+                    ax.set_ylim(0, max_val * 1.25) 
+
                     for bar, label_val in zip(bars, percentages.values if st.session_state['view_mode'] == 'Percentage' else counts.values):
                         height = bar.get_height()
                         label = f"{label_val:.1f}%" if st.session_state['view_mode'] == 'Percentage' else f"{int(label_val)}"
-                        ax.text(bar.get_x() + bar.get_width()/2., height + (max(counts.values)*0.02),
-                                label, ha='center', va='bottom', fontsize=8, fontweight='bold')
+                        ax.text(bar.get_x() + bar.get_width()/2., height + (max_val * 0.02),
+                                label, ha='center', va='bottom', fontsize=9, fontweight='bold')
 
-                    ax.set_ylabel("Count", fontsize=8)
-                    ax.set_xlabel("") # Remove "Main group" title
+                    ax.set_ylabel("Count", fontsize=9)
+                    ax.set_xlabel("") # Removed "Main group"
                     ax.set_facecolor('#FFFFFF')
-                    ax.tick_params(axis='x', rotation=45, labelsize=7)
+                    ax.tick_params(axis='x', rotation=45, labelsize=8)
                     st.pyplot(fig)
                 else:
-                    st.write("No entries found.")
-                st.markdown("</div>", unsafe_allow_html=True)
+                    st.write("No entries found for this selection.")
+                st.markdown("</div></div>", unsafe_allow_html=True)
 
     with col_legend:
-        # Toggle Buttons (Top)
+        st.write("### Controls")
+        # Toggle Buttons
         if st.button("In Numbers"): st.session_state['view_mode'] = 'Numbers'
+        st.write("")
         if st.button("In Percentage"): st.session_state['view_mode'] = 'Percentage'
         
-        st.write("") 
+        st.divider()
 
-        # Risk Filter in Rounded Orange Border
-        st.markdown('<div class="filter-border">', unsafe_allow_html=True)
+        # Risk Filters - All Orange Buttons, No Border
         st.write("**Risk View Filter**")
         if st.button("High Risk"): st.session_state['risk_filter'] = 'High'
         if st.button("Medium Risk"): st.session_state['risk_filter'] = 'Medium'
         if st.button("Low Risk"): st.session_state['risk_filter'] = 'Low'
-        st.markdown('</div>', unsafe_allow_html=True)
 
-# --- PAGES 2 & 3: Standard Placeholder Logic ---
+# --- PAGE 2 & 3: Standard Placeholder Logic ---
 elif page == "Employee risk indicator":
     st.title("Employee risk indicator")
     emp_input = st.number_input("Enter EMPID", min_value=0)
