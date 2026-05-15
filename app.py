@@ -37,7 +37,7 @@ st.markdown("""
 # --- 3. DATA LOADING ---
 @st.cache_data
 def load_data():
-    file_path = 'Attrition.csv'
+    file_path = 'Attrition project.csv'
     if not os.path.exists(file_path):
         st.error(f"⚠️ File Not Found: {file_path}")
         st.stop()
