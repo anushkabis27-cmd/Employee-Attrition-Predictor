@@ -4,14 +4,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 
-# --- 1. CONFIGURATION ---
+# --- 1. CONFIGURATION (MUST BE FIRST) ---
 st.set_page_config(page_title="iRetain | Workforce Analytics", layout="wide")
 
-# --- 2. REFINED CLEAN UI CSS ---
+# --- 2. REFINED PROFESSIONAL UI CSS ---
 st.markdown("""
     <style>
     .main { background-color: #FFFFFF; color: #333333; }
     [data-testid="stSidebar"] { background-color: #f37021; }
+    [data-testid="stSidebar"] .st-emotion-cache-10trblm { color: white; }
     
     /* Centered Main Title */
     .centered-title {
@@ -19,7 +20,7 @@ st.markdown("""
         color: #003366;
         font-family: 'Segoe UI', Arial;
         font-weight: bold;
-        margin-bottom: 30px;
+        margin-bottom: 20px;
     }
 
     /* Section Headers */
@@ -27,19 +28,19 @@ st.markdown("""
         color: #f37021;
         font-weight: bold;
         font-size: 20px;
-        margin-bottom: 15px;
+        margin-bottom: 10px;
     }
 
-    /* Metric Boxes */
+    /* Metric Boxes - Orange with White Text */
     .metric-container {
-        background-color: #FDFDFD;
+        background-color: #f37021;
         padding: 15px;
         border-radius: 8px;
-        border: 1px solid #E0E0E0;
         text-align: center;
+        color: white;
     }
-    .metric-value { font-size: 24px; font-weight: bold; color: #333333; }
-    .metric-label { font-size: 14px; color: #666666; }
+    .metric-value { font-size: 26px; font-weight: bold; color: white; }
+    .metric-label { font-size: 14px; color: white; }
 
     /* Quadrant Box Styling */
     .quadrant-box {
@@ -47,7 +48,7 @@ st.markdown("""
         padding: 0px;
         border-radius: 8px;
         border: 1px solid #EEEEEE;
-        margin-bottom: 20px;
+        margin-bottom: 10px;
         overflow: hidden;
     }
 
@@ -55,30 +56,47 @@ st.markdown("""
     .zone-header {
         background-color: #f37021;
         color: white;
-        padding: 10px;
+        padding: 8px;
         font-size: 22px;
         font-weight: bold;
         text-align: center;
     }
 
-    /* Global Button Styling - All Orange */
+    /* Professional Risk Indicator Styles */
+    .risk-box { padding: 30px; border-radius: 20px; text-align: center; border: 2px solid; background: #FAFAFA; margin-bottom: 25px; }
+    .big-font { font-size: 70px !important; font-weight: bold; }
+    .report-card { background: #FFFFFF; padding: 25px; border-radius: 15px; border-left: 5px solid #f37021; border-top: 1px solid #EEE; border-right: 1px solid #EEE; border-bottom: 1px solid #EEE; margin-bottom: 20px; min-height: 200px; }
+
+    /* Global Button Styling */
     div.stButton > button {
         background-color: #f37021 !important;
         color: white !important;
         border-radius: 4px;
-        font-weight: 600;
         border: none;
         width: 100%;
     }
     
-    /* Ensure charts don't overflow */
-    .chart-container {
-        padding: 10px;
+    /* Small buttons for Numbers/Percentage */
+    .small-btn div.stButton > button {
+        padding: 2px 5px !important;
+        font-size: 12px !important;
+        height: 32px !important;
     }
+
+    /* Large buttons for Risk Filters */
+    .large-btn div.stButton > button {
+        padding: 15px 10px !important;
+        font-size: 18px !important;
+        font-weight: bold !important;
+        height: 60px !important;
+    }
+    
+    .chart-container { padding: 5px; }
+    hr { margin-top: 10px !important; margin-bottom: 10px !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. DATA LOADING ---
+# --- 3. DATA LOADING & LOGIC ---
 @st.cache_data
 def load_data():
     file_path = 'Attrition.csv'
@@ -89,126 +107,21 @@ def load_data():
     df.columns = df.columns.str.strip()
     return df
 
+def get_insights(row):
+    """Generate dynamic reasons and actionables for the detail page."""
+    level = row.get('Risk_Level', 'Low')
+    reasons, actions = [], []
+    if level == 'High':
+        reasons = ["Profile falls within Critical Attrition Window (3-5 years).", "Distance/Tenure ratio suggests immediate risk."]
+        actions = ["**ER Intervention:** Urgent 1:1 visit required.", "**Relationship Reset:** Senior-level mentorship pairing."]
+    elif level == 'Medium':
+        reasons = ["Mid-tenure engagement dip detected.", "Potential career growth stagnation flagged."]
+        actions = ["**Structured Connect:** ER Manager confidential 1:1.", "**OJP Allocation:** Re-energize with new project."]
+    else:
+        reasons = ["Stable organizational anchoring.", "High tenure-to-age ratio."]
+        actions = ["**Appreciation:** Nominate for 'Star Performer'.", "**Growth Talk:** Bi-annual career roadmap."]
+    return reasons, actions
+
 df = load_data()
 
-# --- 4. STATE MANAGEMENT ---
-if 'view_mode' not in st.session_state: st.session_state['view_mode'] = 'Percentage'
-if 'risk_filter' not in st.session_state: st.session_state['risk_filter'] = 'High'
-
-# --- 5. SIDEBAR NAVIGATION ---
-st.sidebar.title("💠 iRETAIN")
-page = st.sidebar.radio("NAVIGATION", ["Zone wise turnover prediction", "Employee risk indicator", "ER Login"])
-
-# --- PAGE 1: ZONE WISE RISK SUMMARY ---
-if page == "Zone wise turnover prediction":
-    st.markdown("<h1 class='centered-title'>Zone-Wise Risk Summary</h1>", unsafe_allow_html=True)
-    
-    col_content, col_legend = st.columns([4, 1.2])
-
-    with col_content:
-        # Top Metrics Section
-        st.markdown("<div class='section-header'>High Risk Profiling</div>", unsafe_allow_html=True)
-        
-        total_emp = len(df)
-        high_risk_count = len(df[df['Risk_Level'] == 'High'])
-        high_risk_pct = (high_risk_count / total_emp) * 100
-
-        m1, m2, m3 = st.columns(3)
-        with m1: st.markdown(f"<div class='metric-container'><div class='metric-label'>Total Employees</div><div class='metric-value'>{total_emp}</div></div>", unsafe_allow_html=True)
-        with m2: st.markdown(f"<div class='metric-container'><div class='metric-label'>High Risk Employees</div><div class='metric-value'>{high_risk_count}</div></div>", unsafe_allow_html=True)
-        with m3: st.markdown(f"<div class='metric-container'><div class='metric-label'>High Risk Percentage</div><div class='metric-value'>{high_risk_pct:.1f}%</div></div>", unsafe_allow_html=True)
-
-        st.divider()
-        
-        st.write(f"#### Departmental Risk: {st.session_state['risk_filter']} Level")
-        
-        # Correct Color Mapping
-        color_map = {'High': '#D7191C', 'Medium': '#FFCC00', 'Low': '#28A745'}
-        current_color = color_map[st.session_state['risk_filter']]
-
-        zones = ['North', 'South', 'East', 'West']
-        cols = st.columns(2)
-        
-        for i, zone in enumerate(zones):
-            target_col = cols[i % 2] if i < 2 else st.columns(2)[i % 2]
-            # Handling row distribution for 2x2 grid
-            if i == 2:
-                row2 = st.columns(2)
-                target_col_1 = row2[0]
-                target_col_2 = row2[1]
-            
-            # Simplified Grid logic for streamlit
-            current_target = st.columns(2)[i%2] if i < 2 else st.columns(2)[i%2]
-
-        # Re-rendering in a stable 2x2 grid
-        row1 = st.columns(2)
-        row2 = st.columns(2)
-        all_cols = row1 + row2
-
-        for i, zone in enumerate(zones):
-            with all_cols[i]:
-                st.markdown(f"""
-                <div class='quadrant-box'>
-                    <div class='zone-header'>{zone}</div>
-                    <div class='chart-container'>
-                """, unsafe_allow_html=True)
-                
-                # Filter for zone and selected risk level
-                zone_data = df[(df['ZONE'].str.capitalize() == zone) & (df['Risk_Level'] == st.session_state['risk_filter'])]
-                
-                if not zone_data.empty:
-                    counts = zone_data['MAIN_GROUP'].value_counts()
-                    total_in_dept = df[df['ZONE'].str.capitalize() == zone]['MAIN_GROUP'].value_counts()
-                    percentages = (counts / total_in_dept * 100).fillna(0)
-
-                    fig, ax = plt.subplots(figsize=(5, 3.5))
-                    bars = ax.bar(counts.index, counts.values, color=current_color)
-                    
-                    # Prevent text overflow by adjusting y-axis limit
-                    max_val = max(counts.values) if not counts.empty else 10
-                    ax.set_ylim(0, max_val * 1.25) 
-
-                    for bar, label_val in zip(bars, percentages.values if st.session_state['view_mode'] == 'Percentage' else counts.values):
-                        height = bar.get_height()
-                        label = f"{label_val:.1f}%" if st.session_state['view_mode'] == 'Percentage' else f"{int(label_val)}"
-                        ax.text(bar.get_x() + bar.get_width()/2., height + (max_val * 0.02),
-                                label, ha='center', va='bottom', fontsize=9, fontweight='bold')
-
-                    ax.set_ylabel("Count", fontsize=9)
-                    ax.set_xlabel("") # Removed "Main group"
-                    ax.set_facecolor('#FFFFFF')
-                    ax.tick_params(axis='x', rotation=45, labelsize=8)
-                    st.pyplot(fig)
-                else:
-                    st.write("No entries found for this selection.")
-                st.markdown("</div></div>", unsafe_allow_html=True)
-
-    with col_legend:
-        st.write("### Controls")
-        # Toggle Buttons
-        if st.button("In Numbers"): st.session_state['view_mode'] = 'Numbers'
-        st.write("")
-        if st.button("In Percentage"): st.session_state['view_mode'] = 'Percentage'
-        
-        st.divider()
-
-        # Risk Filters - All Orange Buttons, No Border
-        st.write("**Risk View Filter**")
-        if st.button("High Risk"): st.session_state['risk_filter'] = 'High'
-        if st.button("Medium Risk"): st.session_state['risk_filter'] = 'Medium'
-        if st.button("Low Risk"): st.session_state['risk_filter'] = 'Low'
-
-# --- PAGE 2 & 3: Standard Placeholder Logic ---
-elif page == "Employee risk indicator":
-    st.title("Employee risk indicator")
-    emp_input = st.number_input("Enter EMPID", min_value=0)
-    if emp_input:
-        res = df[df['EMPID'] == emp_input]
-        if not res.empty:
-            st.write(res.iloc[0])
-
-elif page == "ER Login":
-    st.title("ER Manager Portal")
-    er_id = st.number_input("Enter ER Manager ID", min_value=0)
-    if er_id in df['ER manager ID'].values:
-        st.success(f"Access granted for Manager {er_id}")
+# --- 4.
