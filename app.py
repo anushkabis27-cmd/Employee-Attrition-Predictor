@@ -43,9 +43,9 @@ st.markdown("""
 # --- 3. DATA LOADING ---
 @st.cache_data
 def load_data():
-    file_path = 'Attrition.csv'
+    file_path = 'Attritionfile.xlsx'
     if not os.path.exists(file_path):
-        st.error("⚠️ File Not Found: Attrition.csv")
+        st.error("⚠️ File Not Found: Attritionfile.xlsx")
         st.stop()
     df = pd.read_csv(file_path)
     df.columns = df.columns.str.strip()
