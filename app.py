@@ -7,14 +7,13 @@ import os
 # --- iRetain CONFIG ---
 st.set_page_config(page_title="iRetain | ICICI Bank", layout="wide", initial_sidebar_state="collapsed")
 
-# Professional Color Palette
+# Official Color Palette
 ICICI_ORANGE = "#f37021"
 ICICI_MAROON = "#8b191d"
-ICICI_BLUE = "#003366"
 
 # --- LOGO LOGIC ---
-LOGO_FILE = "icicibanklogo.png"
-LOGO_PATH = LOGO_FILE if os.path.exists(LOGO_FILE) else "https://www.icicibank.com/assets/images/logo.png"
+# Updated to use your specific file: icicilogo.png
+LOGO_PATH = "icicilogo.png"
 
 # --- DATA LOADER ---
 @st.cache_data
@@ -47,13 +46,11 @@ if st.session_state.page == "Cover":
                 background-size: cover;
             }}
             
-            /* iRetain Title - Bold White */
+            /* Typography - Bold White */
             .cover-title {{ text-align: center; color: white; font-size: 130px; font-weight: 900; margin-top: 10px; letter-spacing: -3px; line-height: 1.1; font-family: 'Trebuchet MS', sans-serif; }}
-            
-            /* Subtitle - Bold White */
             .cover-subtitle {{ text-align: center; color: white; font-size: 52px; margin-bottom: 60px; font-weight: 800; line-height: 1.1; padding: 0 5%; font-family: 'Arial', sans-serif; }}
             
-            /* Maroon Buttons with Thick Left Bar & Internal Descriptions */
+            /* Maroon Buttons with Thick Left Bar */
             div.stButton > button {{
                 background-color: {ICICI_MAROON} !important;
                 color: white !important;
@@ -88,7 +85,12 @@ else:
 if st.session_state.page == "Cover":
     col_logo, col_slogan = st.columns([1, 1])
     with col_logo:
-        st.image(LOGO_PATH, width=300)
+        # Check if logo exists before trying to display it
+        if os.path.exists(LOGO_PATH):
+            st.image(LOGO_PATH, width=300)
+        else:
+            st.error("icicilogo.png not found in repository.")
+            
     with col_slogan:
         st.markdown(f"<div style='text-align: right; color: white; font-size: 26px; font-weight: 900; margin-top: 25px;'><b>Predict. Prevent. Retain</b></div>", unsafe_allow_html=True)
 
@@ -111,6 +113,8 @@ if st.session_state.page == "Cover":
 
 # 2. INTERNAL MODULE PAGES
 else:
-    st.sidebar.image(LOGO_PATH, width=200)
+    if os.path.exists(LOGO_PATH):
+        st.sidebar.image(LOGO_PATH, width=200)
     st.sidebar.title("Navigation")
-    # ... Rest of your internal logic for charts and predictors follows here ...
+    
+    # [Navigation logic continues as before...]
