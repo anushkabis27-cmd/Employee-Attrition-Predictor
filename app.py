@@ -14,7 +14,8 @@ ICICI_BLUE = "#003366"
 
 # --- LOGO LOGIC ---
 LOGO_FILE = "icicibanklogo.png"
-LOGO_PATH = LOGO_FILE if os.path.exists(LOGO_FILE) else "https://www.stickpng.com/img/icons-logos-emojis/bank-logos/icici-bank-logo-horizontal"
+LOGO_PATH = LOGO_FILE if os.path.exists(LOGO_FILE) else "https://www.icicibank.com/assets/images/logo.png"
+
 # --- DATA LOADER ---
 @st.cache_data
 def load_data():
