@@ -43,7 +43,7 @@ st.markdown("""
 # --- 3. DATA LOADING ---
 @st.cache_data
 def load_data():
-    file_path = 'Attrition (1).csv'
+    file_path = 'Attrition file.csv'
     if not os.path.exists(file_path):
         st.error(f"⚠️ File Not Found: {file_path}")
         st.stop()
@@ -113,6 +113,7 @@ if st.session_state['current_page'] == "Zone wise turnover prediction":
                     ax.set_facecolor('#FFFFFF')
                     ax.tick_params(axis='x', rotation=45, labelsize=8)
                     ax.set_ylabel("Count", fontsize=9)
+                    ax.set_xlabel("")
                     st.pyplot(fig)
                 else: st.write("No data found for this selection.")
                 st.markdown("</div></div>", unsafe_allow_html=True)
@@ -148,6 +149,8 @@ elif st.session_state['current_page'] == "Employee risk indicator":
             score = row.get('Attrition_Risk_Percentage', 0)
             level = row.get('Risk_Level', 'Low')
             tenure = row.get('TENURE_YRS', 0)
+            emp_age = row.get('AGE', 0)
+            emp_grade = row.get('GRADE', '')
             h_color = "#D7191C" if level == 'High' else ("#FFCC00" if level == 'Medium' else "#28A745")
             st.markdown(f"<div class='risk-box' style='border-color: {h_color}; color: {h_color};'><p class='big-font'>{score:.1f}%</p><h1>{level.upper()} RISK</h1></div>", unsafe_allow_html=True)
             
@@ -155,11 +158,10 @@ elif st.session_state['current_page'] == "Employee risk indicator":
             c1, c2, c3 = st.columns(3)
             with c1: 
                 st.write(f"**EMPID:** {row['EMPID']}")
-                st.write(f"**Grade:** {row['GRADE']}")
-                # Using 'Work_Location' directly since we cleaned the data previously
+                st.write(f"**Grade:** {emp_grade}")
                 st.write(f"**Work Location:** {row.get('Work_Location', row.get('Office_Location', 'N/A'))}")
             with c2: 
-                st.write(f"**Age:** {row['AGE']}")
+                st.write(f"**Age:** {emp_age}")
                 st.write(f"**Tenure:** {tenure} Yrs")
                 st.write(f"**Home Location:** {row.get('Home_Location', 'N/A')}")
             with c3: 
@@ -170,7 +172,6 @@ elif st.session_state['current_page'] == "Employee risk indicator":
             col_a, col_b = st.columns(2)
             with col_a:
                 st.markdown("<div class='report-card'><h4>🔍 Risk Factor Analysis</h4>", unsafe_allow_html=True)
-                # DYNAMIC REASON LOGIC
                 if level == 'High':
                     if 3 <= tenure <= 5:
                         st.write("• Profile falls within Critical Attrition Window (3-5 years).")
@@ -179,8 +180,13 @@ elif st.session_state['current_page'] == "Employee risk indicator":
                     else:
                         st.write("• High-risk markers detected in historical modeling.")
                     
-                    if row.get('AGE', 0) < 30:
-                        st.write("• Vulnerable age segment (<30 years) with high market mobility.")
+                    if 25 <= emp_age <= 29:
+                        st.write("• Core vulnerable segment (25-29 years) with high industry mobility.")
+                    
+                    # Highlight premium vulnerability sectors
+                    if emp_grade in ['DMII', 'MMI', 'AMII']:
+                        st.write(f"• High Attrition Vulnerability Tier Flagged (Grade: {emp_grade}).")
+                    
                     if row.get('Distance_From_Home_KM', 0) > 1000:
                         st.write(f"• Extreme commute stress detected ({row['Distance_From_Home_KM']} KM).")
                 elif level == 'Medium':
@@ -192,11 +198,11 @@ elif st.session_state['current_page'] == "Employee risk indicator":
                 st.markdown(f"<div class='report-card' style='border-left-color: {h_color};'><h4>🚀 Mitigation Actionables</h4>", unsafe_allow_html=True)
                 if level == 'High': 
                     st.write("• **ER Intervention:** Urgent 1:1 visit required.")
-                    st.write("• **Retention Talk:** Discuss internal mobility and role rotation.")
+                    st.write("• **Retention Talk:** Discuss internal career pathing and job rotation options.")
                 elif level == 'Medium':
-                    st.write("• **Structured Connect:** ER Manager confidential 1:1.")
+                    st.write("• **Structured Connect:** ER Manager confidential 1:1 discussion.")
                 else: 
-                    st.write("• **Appreciation:** Nominate for performance award.")
+                    st.write("• **Appreciation:** Discuss with RA to schedule peer to peer recognition plaforms.")
                 st.markdown("</div>", unsafe_allow_html=True)
         else: st.error("EMPID not found.")
 
