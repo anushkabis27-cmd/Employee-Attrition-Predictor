@@ -62,7 +62,7 @@ if 'selected_empid' not in st.session_state: st.session_state['selected_empid'] 
 # --- 5. SIDEBAR NAVIGATION ---
 st.sidebar.title("💠 iRETAIN")
 st.sidebar.markdown("---")
-page_options = ["Zone wise turnover prediction", "Employee risk indicator", "ER Login"]
+page_options = ["Zone wise risk summary", "Employee risk indicator", "ER Login"]
 selected_sidebar = st.sidebar.radio("NAVIGATION", page_options, 
                                     index=page_options.index(st.session_state['current_page']))
 
