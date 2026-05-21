@@ -53,18 +53,29 @@ def load_data():
 
 df = load_data()
 
-# --- 4. STATE MANAGEMENT ---
+# --- 4. DATA SYNCHRONIZATION & STATE MANAGEMENT ---
+# The navigation options array string elements match perfectly across all views
+page_options = ["Zone wise risk summary", "Employee risk indicator", "ER Login"]
+
 if 'view_mode' not in st.session_state: st.session_state['view_mode'] = 'Percentage'
 if 'risk_filter' not in st.session_state: st.session_state['risk_filter'] = 'High'
-if 'current_page' not in st.session_state: st.session_state['current_page'] = "Zone wise turnover prediction"
 if 'selected_empid' not in st.session_state: st.session_state['selected_empid'] = None
+
+# SAFE STATE INITIALIZATION: Automatically intercepts and re-routes out-of-sync session states
+if 'current_page' not in st.session_state or st.session_state['current_page'] not in page_options: 
+    st.session_state['current_page'] = page_options[0]
 
 # --- 5. SIDEBAR NAVIGATION ---
 st.sidebar.title("💠 iRETAIN")
 st.sidebar.markdown("---")
-page_options = ["Zone wise risk summary", "Employee risk indicator", "ER Login"]
-selected_sidebar = st.sidebar.radio("NAVIGATION", page_options, 
-                                    index=page_options.index(st.session_state['current_page']))
+
+# Defensive index lookup to prevent runtime ValueError failures
+try:
+    nav_index = page_options.index(st.session_state['current_page'])
+except ValueError:
+    nav_index = 0
+
+selected_sidebar = st.sidebar.radio("NAVIGATION", page_options, index=nav_index)
 
 if selected_sidebar != st.session_state['current_page']:
     st.session_state['current_page'] = selected_sidebar
@@ -72,7 +83,7 @@ if selected_sidebar != st.session_state['current_page']:
         st.session_state['selected_empid'] = None
 
 # --- PAGE 1: ZONE WISE RISK SUMMARY ---
-if st.session_state['current_page'] == "Zone wise turnover prediction":
+if st.session_state['current_page'] == "Zone wise risk summary":
     st.markdown("<h1 class='centered-title'>Zone-Wise Risk Summary</h1>", unsafe_allow_html=True)
     col_content, col_legend = st.columns([4, 1.2])
 
@@ -80,7 +91,7 @@ if st.session_state['current_page'] == "Zone wise turnover prediction":
         st.markdown("<div class='section-header'>High Risk Profiling</div>", unsafe_allow_html=True)
         total_emp = len(df)
         high_risk_count = len(df[df['Risk_Level'] == 'High'])
-        high_risk_pct = (high_risk_count / total_emp) * 100
+        high_risk_pct = (high_risk_count / total_emp) * 100 if total_emp > 0 else 0
 
         m1, m2, m3 = st.columns(3)
         with m1: st.markdown(f"<div class='metric-container'><div class='metric-label'>Total Employees</div><div class='metric-value'>{total_emp}</div></div>", unsafe_allow_html=True)
@@ -102,20 +113,24 @@ if st.session_state['current_page'] == "Zone wise turnover prediction":
                     counts = zone_data['MAIN_GROUP'].value_counts()
                     total_in_dept = df[df['ZONE'].str.capitalize() == zone]['MAIN_GROUP'].value_counts()
                     percentages = (counts / total_in_dept * 100).fillna(0)
+                    
                     fig, ax = plt.subplots(figsize=(5, 3))
                     bars = ax.bar(counts.index, counts.values, color=current_color)
                     max_v = max(counts.values) * 1.35 if not counts.empty else 10
                     ax.set_ylim(0, max_v)
+                    
                     for bar, label_val in zip(bars, percentages.values if st.session_state['view_mode'] == 'Percentage' else counts.values):
                         height = bar.get_height()
                         label = f"{label_val:.1f}%" if st.session_state['view_mode'] == 'Percentage' else f"{int(label_val)}"
                         ax.text(bar.get_x() + bar.get_width()/2., height + (max_v * 0.02), label, ha='center', va='bottom', fontsize=9, fontweight='bold')
+                    
                     ax.set_facecolor('#FFFFFF')
                     ax.tick_params(axis='x', rotation=45, labelsize=8)
                     ax.set_ylabel("Count", fontsize=9)
                     ax.set_xlabel("")
                     st.pyplot(fig)
-                else: st.write("No data found for this selection.")
+                else: 
+                    st.write("No data found for this selection.")
                 st.markdown("</div></div>", unsafe_allow_html=True)
 
     with col_legend:
@@ -140,7 +155,8 @@ elif st.session_state['current_page'] == "Employee risk indicator":
             st.session_state['selected_empid'] = None
             st.session_state['current_page'] = "ER Login"
             st.rerun()
-    else: emp_id = st.number_input("Enter EMPID to search", min_value=0, step=1)
+    else: 
+        emp_id = st.number_input("Enter EMPID to search", min_value=0, step=1)
 
     if emp_id:
         user_data = df[df['EMPID'] == emp_id]
@@ -183,7 +199,6 @@ elif st.session_state['current_page'] == "Employee risk indicator":
                     if 25 <= emp_age <= 29:
                         st.write("• Core vulnerable segment (25-29 years) with high industry mobility.")
                     
-                    # Highlight premium vulnerability sectors
                     if emp_grade in ['DMII', 'MMI', 'AMII']:
                         st.write(f"• High Attrition Vulnerability Tier Flagged (Grade: {emp_grade}).")
                     
@@ -202,9 +217,10 @@ elif st.session_state['current_page'] == "Employee risk indicator":
                 elif level == 'Medium':
                     st.write("• **Structured Connect:** ER Manager confidential 1:1 discussion.")
                 else: 
-                    st.write("• **Appreciation:** Discuss with RA to schedule peer to peer recognition plaforms.")
+                    st.write("• **Appreciation:** Discuss with RA to schedule peer to peer recognition platforms.")
                 st.markdown("</div>", unsafe_allow_html=True)
-        else: st.error("EMPID not found.")
+        else: 
+            st.error("EMPID not found.")
 
 # --- PAGE 3: ER LOGIN ---
 elif st.session_state['current_page'] == "ER Login":
@@ -244,5 +260,7 @@ elif st.session_state['current_page'] == "ER Login":
                         cols[1].markdown(f"<span style='color:{risk_color}'>{row['MAIN_GROUP']}</span>", unsafe_allow_html=True)
                         cols[2].markdown(f"<span style='color:{risk_color}'>{row['GRADE']}</span>", unsafe_allow_html=True)
                         cols[3].markdown(f"<span style='color:{risk_color}'>{row['Attrition_Risk_Percentage']:.1f}%</span>", unsafe_allow_html=True)
-                else: st.success("No high-risk employees mapped to your portfolio.")
-        else: st.error("Manager ID not found.")
+                else: 
+                    st.success("No high-risk employees mapped to your portfolio.")
+        else: 
+            st.error("Manager ID not found.")
