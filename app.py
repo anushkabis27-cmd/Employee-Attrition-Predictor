@@ -24,25 +24,6 @@ st.markdown("""
 
     /* Quadrant Box Styling */
     .quadrant-box { background-color: #FFFFFF; padding: 0px; border-radius: 8px; border: 1px solid #E0E0E0; margin-bottom: 20px; }
-    
-    /* Clickable Maroon Dashboard KPI Block Styling matching the exact iRetain layout template */
-    div.stButton > button.maroon-btn {
-        background-color: #800000 !important;
-        color: white !important;
-        border-radius: 4px !important;
-        border: none !important;
-        padding: 25px 10px !important;
-        font-size: 18px !important;
-        font-weight: bold !important;
-        width: 100% !important;
-        min-height: 100px !important;
-        box-shadow: 0px 4px 6px rgba(0,0,0,0.15) !important;
-        transition: transform 0.15s, background-color 0.15s !important;
-    }
-    div.stButton > button.maroon-btn:hover {
-        background-color: #5A0000 !important;
-        transform: translateY(-2px) !important;
-    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -60,14 +41,14 @@ def load_data():
 
 df = load_data()
 
-# Initialize Page Router State Configuration (Defaulting to landing dashboard layout)
+# Initialize Page Router State Configuration (Defaulting to the first tab from your original file)
 if 'current_page' not in st.session_state:
-    st.session_state['current_page'] = "Main Dashboard"
+    st.session_state['current_page'] = "Portfolio Analysis"
 
-# --- 4. NAVIGATION CONTROL INTERFACES (Preserved Exact Tab Names) ---
+# --- 4. NAVIGATION CONTROL INTERFACES (Preserved Exact Tab Names from Uploaded Code) ---
 with st.sidebar:
     st.title("🍊 Navigation")
-    pages = ["Main Dashboard", "Portfolio Analysis", "Employee risk indicator", "Predictive Analytics Summary"]
+    pages = ["Portfolio Analysis", "Employee risk indicator", "Predictive Analytics Summary"]
     
     for pg in pages:
         if st.button(pg, key=f"nav_{pg}"):
@@ -75,42 +56,8 @@ with st.sidebar:
 
 # --- PAGE ROUTING CONTROLLERS ---
 
-# NEW TAB: MAIN DASHBOARD (FRONT PAGE LANDING ENVIRONMENT)
-if st.session_state['current_page'] == "Main Dashboard":
-    st.markdown("<h1 class='centered-title'>iRetain Analytics Control Center</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; font-size: 15px; color: #666666;'>Select an analytical workspace module from below to monitor workforce health matrix parameters</p><br>", unsafe_allow_html=True)
-    
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        if st.button("📊 Portfolio Analysis\n\n(Cohort Risk Metrics Summary)", key="btn_port", use_container_width=True):
-            st.session_state['current_page'] = "Portfolio Analysis"
-            st.rerun()
-            
-    with col2:
-        if st.button("🔍 Employee risk indicator\n\n(Individual Risk Profiler)", key="btn_emp", use_container_width=True):
-            st.session_state['current_page'] = "Employee risk indicator"
-            st.rerun()
-            
-    with col3:
-        if st.button("📈 Predictive Analytics Summary\n\n(Model Summary Metrics)", key="btn_pred", use_container_width=True):
-            st.session_state['current_page'] = "Predictive Analytics Summary"
-            st.rerun()
-            
-    # Safely inject target CSS hooks via parent DOM queries
-    st.markdown("""
-        <script>
-        const buttons = window.parent.document.querySelectorAll('button');
-        buttons.forEach(btn => {
-            if(btn.innerText.includes('Portfolio Analysis') || btn.innerText.includes('Employee risk indicator') || btn.innerText.includes('Predictive Analytics Summary')) {
-                btn.classList.add('maroon-btn');
-            }
-        });
-        </script>
-    """, unsafe_allow_html=True)
-
-# TAB: PORTFOLIO ANALYSIS MODULE
-elif st.session_state['current_page'] == "Portfolio Analysis":
+# TAB 1: PORTFOLIO ANALYSIS MODULE
+if st.session_state['current_page'] == "Portfolio Analysis":
     st.markdown("<h2 class='section-header'>📊 Portfolio Analysis & Cohort Overview</h2>", unsafe_allow_html=True)
     
     if not df.empty:
@@ -159,12 +106,12 @@ elif st.session_state['current_page'] == "Portfolio Analysis":
             
             st.dataframe(filtered_df[available_cols].style.background_gradient(subset=['Attrition_Risk_Percentage'], cmap='Oranges'), use_container_width=True)
             
-            # Integrated high risk drilling expansion loop matching your app.py base snippet
+            # Integrated high risk drilling expansion loop matching your exact app.py logic
             st.markdown("---")
             with st.expander("Show High Risk Employees"):
                 mapped_high_risk_df = filtered_df[filtered_df[risk_pct_col] > 50.0] if risk_pct_col else pd.DataFrame()
                 if not mapped_high_risk_df.empty:
-                    st.write("Click an EMPID to view detailed analytics matrix profiles.")
+                    st.write("Click an EMPID to view detail analysis.")
                     header = st.columns([1, 2, 1, 1])
                     header[0].write("**EMPID**"); header[1].write("**Group**"); header[2].write("**Grade**"); header[3].write("**Risk %**")
                     
@@ -181,13 +128,13 @@ elif st.session_state['current_page'] == "Portfolio Analysis":
                         cols[2].markdown(f"<span style='color:{risk_color}'>{row['GRADE']}</span>", unsafe_allow_html=True)
                         cols[3].markdown(f"<span style='color:{risk_color}'>{row[risk_pct_col]:.1f}%</span>", unsafe_allow_html=True)
                 else: 
-                    st.success("No high-risk employees mapped to this selected portfolio bracket.")
+                    st.success("No high-risk employees mapped to your portfolio.")
         else:
-            st.error("Data schema mismatch detected. Verification of Excel column labels required.")
+            st.error("Manager data columns mismatch detected in file parameters.")
     else:
         st.info("Ensure tracking datasets are loaded correctly into the master array structure.")
 
-# TAB: EMPLOYEE RISK INDICATOR MODULE
+# TAB 2: EMPLOYEE RISK INDICATOR MODULE
 elif st.session_state['current_page'] == "Employee risk indicator":
     st.markdown("<h2 class='section-header'>🔍 Individual Employee Risk Profiler</h2>", unsafe_allow_html=True)
     
@@ -222,7 +169,7 @@ elif st.session_state['current_page'] == "Employee risk indicator":
         else:
             st.error("Key tracking parameters missing from dataframe parsing arrays.")
 
-# TAB: PREDICTIVE ANALYTICS SUMMARY MODULE
+# TAB 3: PREDICTIVE ANALYTICS SUMMARY MODULE
 elif st.session_state['current_page'] == "Predictive Analytics Summary":
     st.markdown("<h2 class='section-header'>📈 Algorithmic Weights & Regression Analytics Dashboards</h2>", unsafe_allow_html=True)
     
@@ -232,8 +179,8 @@ elif st.session_state['current_page'] == "Predictive Analytics Summary":
         st.markdown("### Live Excel Extracted Statistical Summary Metrics")
         st.dataframe(summary_df, use_container_width=True)
     except Exception:
-        # Fallback view using verified absolute hierarchical weights matrix
-        st.markdown("### 1. Verified Random Forest Absolute Weights Vector (Hierarchical Arrangement)")
+        # Static absolute hierarchy fallback interface if worksheet reading encounters system blocks
+        st.markdown("### 1. Random Forest Feature Importance Absolute Weights")
         
         rf_display_data = {
             'Predictor Variable Name': ['Sales vs Non-sales', 'Age_Tenure_Factor', 'Distance From Home (KM)', 'TENURE_YRS', 'Is_BFSI', 'Grade_Numeric', 'AGE'],
