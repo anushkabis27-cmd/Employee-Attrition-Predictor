@@ -23,93 +23,204 @@ st.markdown("""
     .metric-label { font-size: 14px; color: white; }
 
     /* Quadrant Box Styling */
-    .quadrant-box { background-color: #FFFFFF; padding: 0px; border-radius: 8px; border: 1px solid #E0E0E0; margin-bottom: 20px; }
-    </style>
-""", unsafe_allow_html=True)
+    .quadrant-box { background-color: #FFFFFF; padding: 0px; border-radius: 8px; border: 1px solid #EEEEEE; margin-bottom: 10px; overflow: hidden; }
+    .zone-header { background-color: #f37021; color: white; padding: 10px; font-size: 24px; font-weight: bold; text-align: center; }
 
-# --- 3. DATA LOADING WORKFLOW ---
+    /* Detail Page Styling */
+    .risk-box { padding: 30px; border-radius: 20px; text-align: center; border: 2px solid; background: #FAFAFA; margin-bottom: 25px; }
+    .big-font { font-size: 70px !important; font-weight: bold; }
+    .report-card { background: #FFFFFF; padding: 25px; border-radius: 15px; border-left: 5px solid #f37021; border-top: 1px solid #EEE; border-right: 1px solid #EEE; border-bottom: 1px solid #EEE; margin-bottom: 20px; }
+
+    /* Button Styling */
+    div.stButton > button { background-color: #f37021 !important; color: white !important; border-radius: 4px; border: none; width: 100%; font-weight: 600; }
+    .large-btn-container div.stButton > button { padding: 15px 10px !important; font-size: 18px !important; height: 60px !important; }
+    .small-btn-container div.stButton > button { padding: 5px !important; font-size: 13px !important; height: auto !important; margin-bottom: 8px; }
+    
+    .chart-container { padding: 5px; }
+    </style>
+    """, unsafe_allow_html=True)
+
+# --- 3. DATA LOADING ---
 @st.cache_data
 def load_data():
-    file_path = "Attrition11.xlsx"
-    if os.path.exists(file_path):
-        df = pd.read_excel(file_path, sheet_name=0)
-        df.columns = df.columns.str.strip()
-        return df
-    else:
-        st.error(f"Error: Target tracking file '{file_path}' not found in the directory.")
-        return pd.DataFrame()
+    file_path = 'Attrition11.xlsx'
+    if not os.path.exists(file_path):
+        st.error(f"⚠️ File Not Found: {file_path}")
+        st.stop()
+    df = pd.read_csv(file_path)
+    df.columns = df.columns.str.strip()
+    return df
 
 df = load_data()
 
-# Initialize Page Router State Configuration (Defaulting to the first tab from your original file)
-if 'current_page' not in st.session_state:
-    st.session_state['current_page'] = "Portfolio Analysis"
+# --- 4. STATE MANAGEMENT ---
+if 'view_mode' not in st.session_state: st.session_state['view_mode'] = 'Percentage'
+if 'risk_filter' not in st.session_state: st.session_state['risk_filter'] = 'High'
+if 'current_page' not in st.session_state: st.session_state['current_page'] = "Zone wise turnover prediction"
+if 'selected_empid' not in st.session_state: st.session_state['selected_empid'] = None
 
-# --- 4. NAVIGATION CONTROL INTERFACES (Preserved Exact Tab Names from Uploaded Code) ---
-with st.sidebar:
-    st.title("🍊 Navigation")
-    pages = ["Portfolio Analysis", "Employee risk indicator", "Predictive Analytics Summary"]
+# --- 5. SIDEBAR NAVIGATION ---
+st.sidebar.title("💠 iRETAIN")
+st.sidebar.markdown("---")
+page_options = ["Zone wise turnover prediction", "Employee risk indicator", "ER Login"]
+selected_sidebar = st.sidebar.radio("NAVIGATION", page_options, 
+                                    index=page_options.index(st.session_state['current_page']))
+
+if selected_sidebar != st.session_state['current_page']:
+    st.session_state['current_page'] = selected_sidebar
+    if selected_sidebar != "Employee risk indicator":
+        st.session_state['selected_empid'] = None
+
+# --- PAGE 1: ZONE WISE RISK SUMMARY ---
+if st.session_state['current_page'] == "Zone wise turnover prediction":
+    st.markdown("<h1 class='centered-title'>Zone-Wise Risk Summary</h1>", unsafe_allow_html=True)
+    col_content, col_legend = st.columns([4, 1.2])
+
+    with col_content:
+        st.markdown("<div class='section-header'>High Risk Profiling</div>", unsafe_allow_html=True)
+        total_emp = len(df)
+        high_risk_count = len(df[df['Risk_Level'] == 'High'])
+        high_risk_pct = (high_risk_count / total_emp) * 100
+
+        m1, m2, m3 = st.columns(3)
+        with m1: st.markdown(f"<div class='metric-container'><div class='metric-label'>Total Employees</div><div class='metric-value'>{total_emp}</div></div>", unsafe_allow_html=True)
+        with m2: st.markdown(f"<div class='metric-container'><div class='metric-label'>High Risk Employees</div><div class='metric-value'>{high_risk_count}</div></div>", unsafe_allow_html=True)
+        with m3: st.markdown(f"<div class='metric-container'><div class='metric-label'>High Risk Percentage</div><div class='metric-value'>{high_risk_pct:.1f}%</div></div>", unsafe_allow_html=True)
+
+        st.divider()
+        st.write(f"#### Group wise - Risk: {st.session_state['risk_filter']} Level")
+        color_map = {'High': '#D7191C', 'Medium': '#FFCC00', 'Low': '#28A745'}
+        current_color = color_map[st.session_state['risk_filter']]
+
+        zones = ['North', 'South', 'East', 'West']
+        grid_rows = [st.columns(2), st.columns(2)]
+        for i, zone in enumerate(zones):
+            with grid_rows[i // 2][i % 2]:
+                st.markdown(f"<div class='quadrant-box'><div class='zone-header'>{zone}</div><div class='chart-container'>", unsafe_allow_html=True)
+                zone_data = df[(df['ZONE'].str.capitalize() == zone) & (df['Risk_Level'] == st.session_state['risk_filter'])]
+                if not zone_data.empty:
+                    counts = zone_data['MAIN_GROUP'].value_counts()
+                    total_in_dept = df[df['ZONE'].str.capitalize() == zone]['MAIN_GROUP'].value_counts()
+                    percentages = (counts / total_in_dept * 100).fillna(0)
+                    fig, ax = plt.subplots(figsize=(5, 3))
+                    bars = ax.bar(counts.index, counts.values, color=current_color)
+                    max_v = max(counts.values) * 1.35 if not counts.empty else 10
+                    ax.set_ylim(0, max_v)
+                    for bar, label_val in zip(bars, percentages.values if st.session_state['view_mode'] == 'Percentage' else counts.values):
+                        height = bar.get_height()
+                        label = f"{label_val:.1f}%" if st.session_state['view_mode'] == 'Percentage' else f"{int(label_val)}"
+                        ax.text(bar.get_x() + bar.get_width()/2., height + (max_v * 0.02), label, ha='center', va='bottom', fontsize=9, fontweight='bold')
+                    ax.set_facecolor('#FFFFFF')
+                    ax.tick_params(axis='x', rotation=45, labelsize=8)
+                    ax.set_ylabel("Count", fontsize=9)
+                    st.pyplot(fig)
+                else: st.write("No data found for this selection.")
+                st.markdown("</div></div>", unsafe_allow_html=True)
+
+    with col_legend:
+        st.write("**Risk View Filter**")
+        st.markdown('<div class="large-btn-container">', unsafe_allow_html=True)
+        if st.button("High Risk"): st.session_state['risk_filter'] = 'High'
+        if st.button("Medium Risk"): st.session_state['risk_filter'] = 'Medium'
+        if st.button("Low Risk"): st.session_state['risk_filter'] = 'Low'
+        st.markdown('</div>', unsafe_allow_html=True)
+        st.divider()
+        st.markdown('<div class="small-btn-container">', unsafe_allow_html=True)
+        if st.button("In Numbers"): st.session_state['view_mode'] = 'Numbers'
+        if st.button("In Percentage"): st.session_state['view_mode'] = 'Percentage'
+        st.markdown('</div>', unsafe_allow_html=True)
+
+# --- PAGE 2: EMPLOYEE RISK INDICATOR ---
+elif st.session_state['current_page'] == "Employee risk indicator":
+    st.markdown("<h1 class='centered-title'>Employee Risk Indicator</h1>", unsafe_allow_html=True)
+    if st.session_state['selected_empid']:
+        emp_id = st.session_state['selected_empid']
+        if st.button("⬅️ Back to ER Dashboard"):
+            st.session_state['selected_empid'] = None
+            st.session_state['current_page'] = "ER Login"
+            st.rerun()
+    else: emp_id = st.number_input("Enter EMPID to search", min_value=0, step=1)
+
+    if emp_id:
+        user_data = df[df['EMPID'] == emp_id]
+        if not user_data.empty:
+            row = user_data.iloc[0]
+            score = row.get('Attrition_Risk_Percentage', 0)
+            level = row.get('Risk_Level', 'Low')
+            tenure = row.get('TENURE_YRS', 0)
+            h_color = "#D7191C" if level == 'High' else ("#FFCC00" if level == 'Medium' else "#28A745")
+            st.markdown(f"<div class='risk-box' style='border-color: {h_color}; color: {h_color};'><p class='big-font'>{score:.1f}%</p><h1>{level.upper()} RISK</h1></div>", unsafe_allow_html=True)
+            
+            st.subheader("📋 Employee Profile Details")
+            c1, c2, c3 = st.columns(3)
+            with c1: 
+                st.write(f"**EMPID:** {row['EMPID']}")
+                st.write(f"**Grade:** {row['GRADE']}")
+                # Using 'Work_Location' directly since we cleaned the data previously
+                st.write(f"**Work Location:** {row.get('Work_Location', row.get('Office_Location', 'N/A'))}")
+            with c2: 
+                st.write(f"**Age:** {row['AGE']}")
+                st.write(f"**Tenure:** {tenure} Yrs")
+                st.write(f"**Home Location:** {row.get('Home_Location', 'N/A')}")
+            with c3: 
+                st.write(f"**Zone:** {row['ZONE']}")
+                st.write(f"**Group:** {row['MAIN_GROUP']}")
+
+            st.divider()
+            col_a, col_b = st.columns(2)
+            with col_a:
+                st.markdown("<div class='report-card'><h4>🔍 Risk Factor Analysis</h4>", unsafe_allow_html=True)
+                # DYNAMIC REASON LOGIC
+                if level == 'High':
+                    if 3 <= tenure <= 5:
+                        st.write("• Profile falls within Critical Attrition Window (3-5 years).")
+                    elif tenure > 10:
+                        st.write(f"• Long-tenure fatigue ({int(tenure)} years); may require role rotation.")
+                    else:
+                        st.write("• High-risk markers detected in historical modeling.")
+                    
+                    if row.get('AGE', 0) < 30:
+                        st.write("• Vulnerable age segment (<30 years) with high market mobility.")
+                    if row.get('Distance_From_Home_KM', 0) > 1000:
+                        st.write(f"• Extreme commute stress detected ({row['Distance_From_Home_KM']} KM).")
+                elif level == 'Medium':
+                    st.write("• Mid-tenure engagement dip detected.")
+                else: 
+                    st.write("• Stable organizational anchoring.")
+                st.markdown("</div>", unsafe_allow_html=True)
+            with col_b:
+                st.markdown(f"<div class='report-card' style='border-left-color: {h_color};'><h4>🚀 Mitigation Actionables</h4>", unsafe_allow_html=True)
+                if level == 'High': 
+                    st.write("• **ER Intervention:** Urgent 1:1 visit required.")
+                    st.write("• **Retention Talk:** Discuss internal mobility and role rotation.")
+                elif level == 'Medium':
+                    st.write("• **Structured Connect:** ER Manager confidential 1:1.")
+                else: 
+                    st.write("• **Appreciation:** Nominate for performance award.")
+                st.markdown("</div>", unsafe_allow_html=True)
+        else: st.error("EMPID not found.")
+
+# --- PAGE 3: ER LOGIN ---
+elif st.session_state['current_page'] == "ER Login":
+    st.markdown("<h1 class='centered-title'>ER Manager Portal</h1>", unsafe_allow_html=True)
+    er_id = st.number_input("Enter ER Manager ID", min_value=0, step=1)
     
-    for pg in pages:
-        if st.button(pg, key=f"nav_{pg}"):
-            st.session_state['current_page'] = pg
+    if er_id:
+        if 'ER manager ID' in df.columns and er_id in df['ER manager ID'].values:
+            manager_df = df[df['ER manager ID'] == er_id]
+            mapped_total = len(manager_df)
+            mapped_high_risk_df = manager_df[manager_df['Risk_Level'] == 'High'].sort_values(by='Attrition_Risk_Percentage', ascending=False)
+            mapped_high_risk_count = len(mapped_high_risk_df)
+            mapped_high_risk_pct = (mapped_high_risk_count / mapped_total * 100) if mapped_total > 0 else 0
+            
+            st.markdown("<div class='section-header'>Portfolio High Risk Profiling</div>", unsafe_allow_html=True)
+            m1, m2, m3 = st.columns(3)
+            with m1: st.markdown(f"<div class='metric-container'><div class='metric-label'>Employees Mapped</div><div class='metric-value'>{mapped_total}</div></div>", unsafe_allow_html=True)
+            with m2: st.markdown(f"<div class='metric-container'><div class='metric-label'>High Risk Count</div><div class='metric-value'>{mapped_high_risk_count}</div></div>", unsafe_allow_html=True)
+            with m3: st.markdown(f"<div class='metric-container'><div class='metric-label'>High Risk (%)</div><div class='metric-value'>{mapped_high_risk_pct:.1f}%</div></div>", unsafe_allow_html=True)
 
-# --- PAGE ROUTING CONTROLLERS ---
-
-# TAB 1: PORTFOLIO ANALYSIS MODULE
-if st.session_state['current_page'] == "Portfolio Analysis":
-    st.markdown("<h2 class='section-header'>📊 Portfolio Analysis & Cohort Overview</h2>", unsafe_allow_html=True)
-    
-    if not df.empty:
-        group_col = 'MAIN_GROUP' if 'MAIN_GROUP' in df.columns else (df.columns[13] if len(df.columns) > 13 else None)
-        manager_col = 'ER manager ID' if 'ER manager ID' in df.columns else None
-        
-        if group_col and manager_col:
-            st.sidebar.markdown("---")
-            st.sidebar.markdown("### Data Filters")
-            distinct_groups = ["All"] + sorted(df[group_col].dropna().unique().tolist())
-            selected_group = st.sidebar.selectbox("Filter by Main Group Segment", distinct_groups)
-            
-            if selected_group != "All":
-                filtered_df = df[df[group_col] == selected_group]
-            else:
-                filtered_df = df
-                
-            distinct_managers = ["All"] + sorted(filtered_df[manager_col].dropna().astype(int).astype(str).unique().tolist())
-            selected_mgr = st.sidebar.selectbox("Filter by ER Manager ID", distinct_managers)
-            
-            if selected_mgr != "All":
-                filtered_df = filtered_df[filtered_df[manager_col].astype(int).astype(str) == selected_mgr]
-                
-            tot_headcount = len(filtered_df)
-            risk_pct_col = 'Attrition_Risk_Percentage' if 'Attrition_Risk_Percentage' in df.columns else None
-            high_risk_count = 0
-            avg_risk_rate = 0.0
-            
-            if risk_pct_col:
-                high_risk_count = len(filtered_df[filtered_df[risk_pct_col] > 50.0])
-                avg_risk_rate = filtered_df[risk_pct_col].mean() if tot_headcount > 0 else 0.0
-                
-            m_col1, m_col2, m_col3 = st.columns(3)
-            with m_col1:
-                st.markdown(f"<div class='metric-container'><div class='metric-value'>{tot_headcount}</div><div class='metric-label'>Total Tracked Portfolio Headcount</div></div>", unsafe_allow_html=True)
-            with m_col2:
-                st.markdown(f"<div class='metric-container'><div class='metric-value'>{high_risk_count}</div><div class='metric-label'>High Attrition Flight Risks (>50%)</div></div>", unsafe_allow_html=True)
-            with m_col3:
-                st.markdown(f"<div class='metric-container'><div class='metric-value'>{avg_risk_rate:.2f}%</div><div class='metric-label'>Weighted Mean Portfolio Attrition Risk</div></div>", unsafe_allow_html=True)
-                
-            st.markdown("<br>", unsafe_allow_html=True)
-            
-            st.markdown("### 📋 Active Portfolio Risk Database Grid")
-            display_cols = ['EMPID', 'AGE', 'GRADE', 'Distance From Home (KM)', 'TENURE_YRS', 'MAIN_GROUP', 'Attrition_Risk_Percentage', 'Risk_Level']
-            available_cols = [c for c in display_cols if c in filtered_df.columns]
-            
-            st.dataframe(filtered_df[available_cols].style.background_gradient(subset=['Attrition_Risk_Percentage'], cmap='Oranges'), use_container_width=True)
-            
-            # Integrated high risk drilling expansion loop matching your exact app.py logic
-            st.markdown("---")
+            st.divider()
             with st.expander("Show High Risk Employees"):
-                mapped_high_risk_df = filtered_df[filtered_df[risk_pct_col] > 50.0] if risk_pct_col else pd.DataFrame()
                 if not mapped_high_risk_df.empty:
                     st.write("Click an EMPID to view detail analysis.")
                     header = st.columns([1, 2, 1, 1])
@@ -126,76 +237,6 @@ if st.session_state['current_page'] == "Portfolio Analysis":
                         
                         cols[1].markdown(f"<span style='color:{risk_color}'>{row['MAIN_GROUP']}</span>", unsafe_allow_html=True)
                         cols[2].markdown(f"<span style='color:{risk_color}'>{row['GRADE']}</span>", unsafe_allow_html=True)
-                        cols[3].markdown(f"<span style='color:{risk_color}'>{row[risk_pct_col]:.1f}%</span>", unsafe_allow_html=True)
-                else: 
-                    st.success("No high-risk employees mapped to your portfolio.")
-        else:
-            st.error("Manager data columns mismatch detected in file parameters.")
-    else:
-        st.info("Ensure tracking datasets are loaded correctly into the master array structure.")
-
-# TAB 2: EMPLOYEE RISK INDICATOR MODULE
-elif st.session_state['current_page'] == "Employee risk indicator":
-    st.markdown("<h2 class='section-header'>🔍 Individual Employee Risk Profiler</h2>", unsafe_allow_html=True)
-    
-    if not df.empty:
-        emp_id_col = 'EMPID'
-        if emp_id_col in df.columns:
-            all_emp_ids = sorted(df[emp_id_col].dropna().unique().tolist())
-            
-            selected_id_index = 0
-            if 'selected_empid' in st.session_state and st.session_state['selected_empid'] in all_emp_ids:
-                selected_id_index = all_emp_ids.index(st.session_state['selected_empid'])
-                
-            target_emp = st.selectbox("Select Target Employee ID Profile", all_emp_ids, index=selected_id_index)
-            emp_record = df[df[emp_id_col] == target_emp].iloc[0]
-            
-            ec1, ec2 = st.columns(2)
-            with ec1:
-                st.markdown("#### Baseline Demographic Parameters")
-                st.write(f"**Employee Age:** {emp_record.get('AGE', 'N/A')} Years")
-                st.write(f"**Corporate Grade Rank:** {emp_record.get('GRADE', 'N/A')} (Numeric Rank: {emp_record.get('Grade_Numeric', 'N/A')})")
-                st.write(f"**Assigned Department Pool:** {emp_record.get('MAIN_GROUP', 'N/A')}")
-                st.write(f"**Commuting Distance:** {emp_record.get('Distance From Home (KM)', 'N/A')} KM")
-                
-            with ec2:
-                st.markdown("#### Predictive Metrics Analysis")
-                st.write(f"**Current Structural Tenure:** {emp_record.get('TENURE_YRS', 'N/A')} Years")
-                st.write(f"**Calculated Age-Tenure Co-factor:** {emp_record.get('Age_Tenure_Factor', 'N/A')}")
-                st.write(f"**Risk Level Label:** `{emp_record.get('Risk_Level', 'N/A')}`")
-                
-                risk_val = emp_record.get('Attrition_Risk_Percentage', 0.0)
-                st.metric("Model Attrition Probability Score", f"{risk_val:.2f}%")
-        else:
-            st.error("Key tracking parameters missing from dataframe parsing arrays.")
-
-# TAB 3: PREDICTIVE ANALYTICS SUMMARY MODULE
-elif st.session_state['current_page'] == "Predictive Analytics Summary":
-    st.markdown("<h2 class='section-header'>📈 Algorithmic Weights & Regression Analytics Dashboards</h2>", unsafe_allow_html=True)
-    
-    file_path = "Attrition11.xlsx"
-    try:
-        summary_df = pd.read_excel(file_path, sheet_name=1)
-        st.markdown("### Live Excel Extracted Statistical Summary Metrics")
-        st.dataframe(summary_df, use_container_width=True)
-    except Exception:
-        # Static absolute hierarchy fallback interface if worksheet reading encounters system blocks
-        st.markdown("### 1. Random Forest Feature Importance Absolute Weights")
-        
-        rf_display_data = {
-            'Predictor Variable Name': ['Sales vs Non-sales', 'Age_Tenure_Factor', 'Distance From Home (KM)', 'TENURE_YRS', 'Is_BFSI', 'Grade_Numeric', 'AGE'],
-            'Absolute Importance Weight': ["0.3800", "0.2400", "0.1600", "0.1000", "0.0500", "0.0400", "0.0300"],
-            'Model Feature Track Type': ['Engineered Factor', 'Engineered Factor', 'Baseline Feature', 'Baseline Feature', 'Engineered Factor', 'Baseline Feature', 'Baseline Feature']
-        }
-        st.table(pd.DataFrame(rf_display_data))
-        
-        st.markdown("### 2. OLS Linear Regression Parameter Outputs ($\alpha = 0.05$)")
-        st.write("**Model Fit Metric ($R^2$):** `0.6812` | **Adjusted $R^2$:** `0.6791`")
-        
-        reg_display_data = {
-            'Predictor Variable': ['Constant (Model Intercept)', 'Sales vs Non-sales', 'Age_Tenure_Factor', 'Distance From Home (KM)', 'TENURE_YRS', 'Is_BFSI', 'Grade_Numeric', 'AGE'],
-            'Coefficient (β)': [12.1500, 24.1200, 0.0540, 0.0038, -0.2800, 2.9500, 0.1800, -0.0120],
-            'P-Value': ['< 0.001', '< 0.001', '< 0.001', '0.0028', '0.0115', '0.0395', '0.0880', '0.1450'],
-            'Status': ['Significant', 'Highly Significant', 'Highly Significant', 'Significant', 'Significant', 'Significant', 'Insignificant', 'Insignificant']
-        }
-        st.table(pd.DataFrame(reg_display_data))
+                        cols[3].markdown(f"<span style='color:{risk_color}'>{row['Attrition_Risk_Percentage']:.1f}%</span>", unsafe_allow_html=True)
+                else: st.success("No high-risk employees mapped to your portfolio.")
+        else: st.error("Manager ID not found.")
