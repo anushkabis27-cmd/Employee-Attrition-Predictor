@@ -183,7 +183,7 @@ elif st.session_state['current_page'] == "Employee risk indicator":
                     if row.get('AGE', 0) < 30:
                         st.write("• Vulnerable age segment (<30 years) with high market mobility.")
                     if row.get('Distance From Home (KM)', row.get('Distance_From_Home_KM', 0)) > 1000:
-                        st.write(f"• Extreme commute stress detected ({row.get('Distance From Home (KM)', row.get('Distance_From_Home_KM', 0))} KM).")
+                        st.write(f"• Distance from Home is High ({row.get('Distance From Home (KM)', row.get('Distance_From_Home_KM', 0))} KM).")
                 elif level == 'Medium':
                     st.write("• Mid-tenure engagement dip detected.")
                 else: 
