@@ -110,13 +110,13 @@ if 'current_manager_id' not in st.session_state: st.session_state['current_manag
 # --- 5. SIDEBAR NAVIGATION ---
 st.sidebar.title("iRETAIN")
 st.sidebar.markdown("---")
-page_options = ["Zone wise turnover prediction", "Employee risk indicator", "ER Login", "Remarks Form"]
+page_options = ["Zone wise turnover prediction", "Employee risk indicator", "ER Manager Portal", "Remarks"]
 selected_sidebar = st.sidebar.radio("NAVIGATION", page_options, 
                                     index=page_options.index(st.session_state['current_page']))
 
 if selected_sidebar != st.session_state['current_page']:
     st.session_state['current_page'] = selected_sidebar
-    if selected_sidebar != "Employee risk indicator" and selected_sidebar != "Remarks Form":
+    if selected_sidebar != "Employee risk indicator" and selected_sidebar != "Remarks":
         st.session_state['selected_empid'] = None
 
 
@@ -187,7 +187,7 @@ elif st.session_state['current_page'] == "Employee risk indicator":
         emp_id = st.session_state['selected_empid']
         if st.button("Back to ER Dashboard"):
             st.session_state['selected_empid'] = None
-            st.session_state['current_page'] = "ER Login"
+            st.session_state['current_page'] = "ER Manager Portal"
             st.rerun()
     else: 
         emp_id = st.number_input("Enter EMPID to search", min_value=0, step=1)
@@ -271,8 +271,8 @@ elif st.session_state['current_page'] == "Employee risk indicator":
         else: st.error("EMPID not found.")
 
 
-# --- PAGE 3: ER LOGIN ---
-elif st.session_state['current_page'] == "ER Login":
+# --- PAGE 3: ER MANAGER PORTAL ---
+elif st.session_state['current_page'] == "ER Manager Portal":
     st.markdown("<h1 class='centered-title'>ER Manager Portal</h1>", unsafe_allow_html=True)
     er_id = st.number_input("Enter ER Manager ID", min_value=0, step=1, value=st.session_state['current_manager_id'] if st.session_state['current_manager_id'] else 0)
     
@@ -297,51 +297,82 @@ elif st.session_state['current_page'] == "ER Login":
 
             st.divider()
             
-            st.write("#### Active Portfolio Registry")
-            portfolio_selection = manager_df.sort_values(by='Attrition_Risk_Percentage', ascending=False)
+            # Implementation of requested view separations using conditional Tabs
+            tab_all, tab_high_risk = st.tabs(["Active Portfolio Registry", "Show high risk employees tab"])
             
-            if not portfolio_selection.empty:
-                # Table Headers
-                h_cols = st.columns([1, 2, 1, 1, 1.2])
-                h_cols[0].write("**EMPID**")
-                h_cols[1].write("**Group**")
-                h_cols[2].write("**Grade**")
-                h_cols[3].write("**Risk %**")
-                h_cols[4].write("**Actions**")
-                st.markdown("---")
+            with tab_all:
+                st.write("#### Active Portfolio Registry")
+                portfolio_selection = manager_df.sort_values(by='Attrition_Risk_Percentage', ascending=False)
+                
+                if not portfolio_selection.empty:
+                    h_cols = st.columns([1, 2, 1, 1, 1.2])
+                    h_cols[0].write("**EMPID**")
+                    h_cols[1].write("**Group**")
+                    h_cols[2].write("**Grade**")
+                    h_cols[3].write("**Risk %**")
+                    h_cols[4].write("**Actions**")
+                    st.markdown("---")
 
-                for index, row in portfolio_selection.iterrows():
-                    cols = st.columns([1, 2, 1, 1, 1.2])
-                    
-                    r_color = "red" if row['Risk_Level'] == "High" else ("#FFCC00" if row['Risk_Level'] == "Medium" else "green")
-                    
-                    if cols[0].button(str(row['EMPID']), key=f"p_view_{row['EMPID']}"):
-                        st.session_state['selected_empid'] = row['EMPID']
-                        st.session_state['current_page'] = "Employee risk indicator"
-                        st.rerun()
+                    for index, row in portfolio_selection.iterrows():
+                        cols = st.columns([1, 2, 1, 1, 1.2])
+                        r_color = "red" if row['Risk_Level'] == "High" else ("#FFCC00" if row['Risk_Level'] == "Medium" else "green")
                         
-                    cols[1].markdown(f"<span style='color:{r_color}; font-weight:500;'>{row['MAIN_GROUP']}</span>", unsafe_allow_html=True)
-                    cols[2].markdown(f"<span style='color:{r_color}'>{row['GRADE']}</span>", unsafe_allow_html=True)
-                    cols[3].markdown(f"<span style='color:{r_color}; font-weight:bold;'>{row['Attrition_Risk_Percentage']:.1f}%</span>", unsafe_allow_html=True)
+                        if cols[0].button(str(row['EMPID']), key=f"p_view_{row['EMPID']}"):
+                            st.session_state['selected_empid'] = row['EMPID']
+                            st.session_state['current_page'] = "Employee risk indicator"
+                            st.rerun()
+                            
+                        cols[1].markdown(f"<span style='color:{r_color}; font-weight:500;'>{row['MAIN_GROUP']}</span>", unsafe_allow_html=True)
+                        cols[2].markdown(f"<span style='color:{r_color}'>{row['GRADE']}</span>", unsafe_allow_html=True)
+                        cols[3].markdown(f"<span style='color:{r_color}; font-weight:bold;'>{row['Attrition_Risk_Percentage']:.1f}%</span>", unsafe_allow_html=True)
+                        
+                        if cols[4].button("Remarks", key=f"rem_{row['EMPID']}"):
+                            st.session_state['remarks_empid'] = row['EMPID']
+                            st.session_state['current_page'] = "Remarks"
+                            st.rerun()
+                else:
+                    st.success("No active employees mapped to your portfolio.")
                     
-                    # Remarks Action Button
-                    if cols[4].button("Remarks Form", key=f"rem_{row['EMPID']}"):
-                        st.session_state['remarks_empid'] = row['EMPID']
-                        st.session_state['current_page'] = "Remarks Form"
-                        st.rerun()
-            else:
-                st.success("No active employees mapped to your portfolio.")
+            with tab_high_risk:
+                st.write("#### Critical Portfolio Hotspots")
+                if not mapped_high_risk_df.empty:
+                    h_cols_hr = st.columns([1, 2, 1, 1, 1.2])
+                    h_cols_hr[0].write("**EMPID**")
+                    h_cols_hr[1].write("**Group**")
+                    h_cols_hr[2].write("**Grade**")
+                    h_cols_hr[3].write("**Risk %**")
+                    h_cols_hr[4].write("**Actions**")
+                    st.markdown("---")
+
+                    for index, row in mapped_high_risk_df.iterrows():
+                        cols = st.columns([1, 2, 1, 1, 1.2])
+                        
+                        if cols[0].button(str(row['EMPID']), key=f"hr_view_{row['EMPID']}"):
+                            st.session_state['selected_empid'] = row['EMPID']
+                            st.session_state['current_page'] = "Employee risk indicator"
+                            st.rerun()
+                            
+                        cols[1].markdown(f"<span style='color:red; font-weight:500;'>{row['MAIN_GROUP']}</span>", unsafe_allow_html=True)
+                        cols[2].markdown(f"<span style='color:red'>{row['GRADE']}</span>", unsafe_allow_html=True)
+                        cols[3].markdown(f"<span style='color:red; font-weight:bold;'>{row['Attrition_Risk_Percentage']:.1f}%</span>", unsafe_allow_html=True)
+                        
+                        if cols[4].button("Remarks", key=f"hr_rem_{row['EMPID']}"):
+                            st.session_state['remarks_empid'] = row['EMPID']
+                            st.session_state['current_page'] = "Remarks"
+                            st.rerun()
+                else:
+                    st.success("No high-risk employees mapped to your portfolio.")
         else: st.error("Manager ID not found.")
 
 
 # --- PAGE 4: REMARKS INTERVENTION FORM & DYNAMIC RECALIBRATION ---
-elif st.session_state['current_page'] == "Remarks Form":
-    st.markdown("<h1 class='centered-title'>Remarks Form</h1>", unsafe_allow_html=True)
+elif st.session_state['current_page'] == "Remarks":
+    st.markdown("<h1 class='centered-title'>Remarks</h1>", unsafe_allow_html=True)
     
     if not st.session_state['remarks_empid']:
-        st.info("Please select an employee inside the ER Login page to access the active evaluation.")
+        st.info("Please select an employee inside the ER Manager Portal to access active remarks entries.")
         if st.button("Go to ER Portal"):
-            st.session_state['current_page'] = "ER Login"
+            st.session_state['current_page'] = "ER Manager Portal"
             st.rerun()
     else:
         target_id = st.session_state['remarks_empid']
@@ -356,7 +387,7 @@ elif st.session_state['current_page'] == "Remarks Form":
             st.markdown(f"**Context Profile:** {emp_data['MAIN_GROUP']} | **Current Baseline:** <span style='color:red; font-weight:bold;'>{base_pct:.1f}% ({base_tier})</span>", unsafe_allow_html=True)
             
             if st.button("Cancel & Return to Dashboard"):
-                st.session_state['current_page'] = "ER Login"
+                st.session_state['current_page'] = "ER Manager Portal"
                 st.rerun()
                 
             st.divider()
@@ -364,14 +395,15 @@ elif st.session_state['current_page'] == "Remarks Form":
             with st.form("remarks_capture_form"):
                 status_dropdown = st.selectbox("Status", options=["Not started", "Ongoing", "Completed"])
                 
-                st.markdown("##### Feedback Parameters")
+                st.markdown("##### Parameter Metrics")
                 likert_scales = {1: "Dissatisfied", 2: "Somewhat Dissatisfied", 3: "Neutral", 4: "Somewhat Satisfied", 5: "Satisfied"}
                 
-                s_manager = st.radio("Manager Feedback (Highest Weight)", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
-                s_role = st.radio("Role Feedback (High Weight)", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
-                s_team = st.radio("Team & Workplace Relationships Feedback (High Weight)", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
-                s_learning = st.radio("Learning & Training Feedback", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
-                s_growth = st.radio("Career Growth Opportunities Feedback", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
+                # Labels cleaned up: Weights and explicit references to the word "Feedback" removed
+                s_manager = st.radio("Manager", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
+                s_role = st.radio("Role", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
+                s_team = st.radio("Team & Workplace Relationships", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
+                s_learning = st.radio("Learning & Training", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
+                s_growth = st.radio("Career Growth Opportunities", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
                 
                 text_comments = st.text_area("Manager Notes", placeholder="Enter notes from conversation here...")
                 
