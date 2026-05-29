@@ -105,6 +105,7 @@ if 'current_page' not in st.session_state: st.session_state['current_page'] = "Z
 if 'selected_empid' not in st.session_state: st.session_state['selected_empid'] = None
 if 'remarks_empid' not in st.session_state: st.session_state['remarks_empid'] = None
 if 'current_manager_id' not in st.session_state: st.session_state['current_manager_id'] = None
+if 'er_authenticated' not in st.session_state: st.session_state['er_authenticated'] = False
 
 
 # --- 5. SIDEBAR NAVIGATION CONTROLLER WITH SAFE FALLBACK ---
@@ -281,95 +282,111 @@ elif st.session_state['current_page'] == "Employee risk indicator":
 # --- PAGE 3: ER MANAGER PORTAL ---
 elif st.session_state['current_page'] == "ER Manager Portal":
     st.markdown("<h1 class='centered-title'>ER Manager Portal</h1>", unsafe_allow_html=True)
-    er_id = st.number_input("Enter ER Manager ID", min_value=0, step=1, value=st.session_state['current_manager_id'] if st.session_state['current_manager_id'] else 0)
     
-    if er_id:
-        st.session_state['current_manager_id'] = er_id
-        if 'ER manager ID' in df.columns and er_id in df['ER manager ID'].values:
-            manager_df = df[df['ER manager ID'] == er_id]
-            
-            # Execute automated portfolio threshold scan alerts
-            run_portfolio_trigger_check(df, er_id)
+    # Input field layout structure
+    col_input, col_btn = st.columns([3, 1])
+    with col_input:
+        input_er_id = st.number_input("Enter ER Manager ID", min_value=0, step=1, value=st.session_state['current_manager_id'] if st.session_state['current_manager_id'] else 0)
+    
+    with col_btn:
+        st.markdown("<div style='padding-top: 28px;'></div>", unsafe_allow_html=True)
+        login_clicked = st.button("Log in")
 
-            mapped_total = len(manager_df)
-            mapped_high_risk_df = manager_df[manager_df['Risk_Level'] == 'High'].sort_values(by='Attrition_Risk_Percentage', ascending=False)
-            mapped_high_risk_count = len(mapped_high_risk_df)
-            mapped_high_risk_pct = (mapped_high_risk_count / mapped_total * 100) if mapped_total > 0 else 0
-            
-            st.markdown("<div class='section-header'>Portfolio High Risk Profiling</div>", unsafe_allow_html=True)
-            m1, m2, m3 = st.columns(3)
-            with m1: st.markdown(f"<div class='metric-container'><div class='metric-label'>Employees Mapped</div><div class='metric-value'>{mapped_total}</div></div>", unsafe_allow_html=True)
-            with m2: st.markdown(f"<div class='metric-container'><div class='metric-label'>High Risk Count</div><div class='metric-value'>{mapped_high_risk_count}</div></div>", unsafe_allow_html=True)
-            with m3: st.markdown(f"<div class='metric-container'><div class='metric-label'>High Risk (%)</div><div class='metric-value'>{mapped_high_risk_pct:.1f}%</div></div>", unsafe_allow_html=True)
+    # If the user clicks the explicit "Log in" button, update state configuration parameters
+    if login_clicked:
+        if 'ER manager ID' in df.columns and input_er_id in df['ER manager ID'].values:
+            st.session_state['current_manager_id'] = input_er_id
+            st.session_state['er_authenticated'] = True
+        else:
+            st.session_state['er_authenticated'] = False
+            st.error("Manager ID not found.")
 
-            st.divider()
-            
-            # Implementation of structural layouts via interactive conditional Tabs
-            tab_all, tab_high_risk = st.tabs(["Active Portfolio Registry", "Show high risk employees tab"])
-            
-            with tab_all:
-                st.write("#### Active Portfolio Registry")
-                portfolio_selection = manager_df.sort_values(by='Attrition_Risk_Percentage', ascending=False)
-                
-                if not portfolio_selection.empty:
-                    h_cols = st.columns([1, 2, 1, 1, 1.2])
-                    h_cols[0].write("**EMPID**")
-                    h_cols[1].write("**Group**")
-                    h_cols[2].write("**Grade**")
-                    h_cols[3].write("**Risk %**")
-                    h_cols[4].write("**Actions**")
-                    st.markdown("---")
+    # Render dashboard components only if authenticated status conditions pass successfully
+    if st.session_state['er_authenticated'] and st.session_state['current_manager_id']:
+        active_id = st.session_state['current_manager_id']
+        manager_df = df[df['ER manager ID'] == active_id]
+        
+        # Execute automated portfolio threshold scan alerts
+        run_portfolio_trigger_check(df, active_id)
 
-                    for index, row in portfolio_selection.iterrows():
-                        cols = st.columns([1, 2, 1, 1, 1.2])
-                        r_color = "red" if row['Risk_Level'] == "High" else ("#FFCC00" if row['Risk_Level'] == "Medium" else "green")
-                        
-                        if cols[0].button(str(row['EMPID']), key=f"p_view_{row['EMPID']}"):
-                            st.session_state['selected_empid'] = row['EMPID']
-                            st.session_state['current_page'] = "Employee risk indicator"
-                            st.rerun()
-                            
-                        cols[1].markdown(f"<span style='color:{r_color}; font-weight:500;'>{row['MAIN_GROUP']}</span>", unsafe_allow_html=True)
-                        cols[2].markdown(f"<span style='color:{r_color}'>{row['GRADE']}</span>", unsafe_allow_html=True)
-                        cols[3].markdown(f"<span style='color:{r_color}; font-weight:bold;'>{row['Attrition_Risk_Percentage']:.1f}%</span>", unsafe_allow_html=True)
-                        
-                        if cols[4].button("Remarks", key=f"rem_{row['EMPID']}"):
-                            st.session_state['remarks_empid'] = row['EMPID']
-                            st.session_state['current_page'] = "Remarks"
-                            st.rerun()
-                else:
-                    st.success("No active employees mapped to your portfolio.")
+        mapped_total = len(manager_df)
+        mapped_high_risk_df = manager_df[manager_df['Risk_Level'] == 'High'].sort_values(by='Attrition_Risk_Percentage', ascending=False)
+        mapped_high_risk_count = len(mapped_high_risk_df)
+        mapped_high_risk_pct = (mapped_high_risk_count / mapped_total * 100) if mapped_total > 0 else 0
+        
+        st.markdown("<div class='section-header'>Portfolio High Risk Profiling</div>", unsafe_allow_html=True)
+        m1, m2, m3 = st.columns(3)
+        with m1: st.markdown(f"<div class='metric-container'><div class='metric-label'>Employees Mapped</div><div class='metric-value'>{mapped_total}</div></div>", unsafe_allow_html=True)
+        with m2: st.markdown(f"<div class='metric-container'><div class='metric-label'>High Risk Count</div><div class='metric-value'>{mapped_high_risk_count}</div></div>", unsafe_allow_html=True)
+        with m3: st.markdown(f"<div class='metric-container'><div class='metric-label'>High Risk (%)</div><div class='metric-value'>{mapped_high_risk_pct:.1f}%</div></div>", unsafe_allow_html=True)
+
+        st.divider()
+        
+        # Implementation of layouts via tabs
+        tab_all, tab_high_risk = st.tabs(["Active Portfolio Registry", "Show high risk employees tab"])
+        
+        with tab_all:
+            st.write("#### Active Portfolio Registry")
+            portfolio_selection = manager_df.sort_values(by='Attrition_Risk_Percentage', ascending=False)
+            
+            if not portfolio_selection.empty:
+                h_cols = st.columns([1, 2, 1, 1, 1.2])
+                h_cols[0].write("**EMPID**")
+                h_cols[1].write("**Group**")
+                h_cols[2].write("**Grade**")
+                h_cols[3].write("**Risk %**")
+                h_cols[4].write("**Actions**")
+                st.markdown("---")
+
+                for index, row in portfolio_selection.iterrows():
+                    cols = st.columns([1, 2, 1, 1, 1.2])
+                    r_color = "red" if row['Risk_Level'] == "High" else ("#FFCC00" if row['Risk_Level'] == "Medium" else "green")
                     
-            with tab_high_risk:
-                st.write("#### Critical Portfolio Hotspots")
-                if not mapped_high_risk_df.empty:
-                    h_cols_hr = st.columns([1, 2, 1, 1, 1.2])
-                    h_cols_hr[0].write("**EMPID**")
-                    h_cols_hr[1].write("**Group**")
-                    h_cols_hr[2].write("**Grade**")
-                    h_cols_hr[3].write("**Risk %**")
-                    h_cols_hr[4].write("**Actions**")
-                    st.markdown("---")
+                    if cols[0].button(str(row['EMPID']), key=f"p_view_{row['EMPID']}"):
+                        st.session_state['selected_empid'] = row['EMPID']
+                        st.session_state['current_page'] = "Employee risk indicator"
+                        st.rerun()
+                        
+                    cols[1].markdown(f"<span style='color:{r_color}; font-weight:500;'>{row['MAIN_GROUP']}</span>", unsafe_allow_html=True)
+                    cols[2].markdown(f"<span style='color:{r_color}'>{row['GRADE']}</span>", unsafe_allow_html=True)
+                    cols[3].markdown(f"<span style='color:{r_color}; font-weight:bold;'>{row['Attrition_Risk_Percentage']:.1f}%</span>", unsafe_allow_html=True)
+                    
+                    if cols[4].button("Remarks", key=f"rem_{row['EMPID']}"):
+                        st.session_state['remarks_empid'] = row['EMPID']
+                        st.session_state['current_page'] = "Remarks"
+                        st.rerun()
+            else:
+                st.success("No active employees mapped to your portfolio.")
+                
+        with tab_high_risk:
+            st.write("#### Critical Portfolio Hotspots")
+            if not mapped_high_risk_df.empty:
+                h_cols_hr = st.columns([1, 2, 1, 1, 1.2])
+                h_cols_hr[0].write("**EMPID**")
+                h_cols_hr[1].write("**Group**")
+                h_cols_hr[2].write("**Grade**")
+                h_cols_hr[3].write("**Risk %**")
+                h_cols_hr[4].write("**Actions**")
+                st.markdown("---")
 
-                    for index, row in mapped_high_risk_df.iterrows():
-                        cols = st.columns([1, 2, 1, 1, 1.2])
+                for index, row in mapped_high_risk_df.iterrows():
+                    cols = st.columns([1, 2, 1, 1, 1.2])
+                    
+                    if cols[0].button(str(row['EMPID']), key=f"hr_view_{row['EMPID']}"):
+                        st.session_state['selected_empid'] = row['EMPID']
+                        st.session_state['current_page'] = "Employee risk indicator"
+                        st.rerun()
                         
-                        if cols[0].button(str(row['EMPID']), key=f"hr_view_{row['EMPID']}"):
-                            st.session_state['selected_empid'] = row['EMPID']
-                            st.session_state['current_page'] = "Employee risk indicator"
-                            st.rerun()
-                            
-                        cols[1].markdown(f"<span style='color:red; font-weight:500;'>{row['MAIN_GROUP']}</span>", unsafe_allow_html=True)
-                        cols[2].markdown(f"<span style='color:red'>{row['GRADE']}</span>", unsafe_allow_html=True)
-                        cols[3].markdown(f"<span style='color:red; font-weight:bold;'>{row['Attrition_Risk_Percentage']:.1f}%</span>", unsafe_allow_html=True)
-                        
-                        if cols[4].button("Remarks", key=f"hr_rem_{row['EMPID']}"):
-                            st.session_state['remarks_empid'] = row['EMPID']
-                            st.session_state['current_page'] = "Remarks"
-                            st.rerun()
-                else:
-                    st.success("No high-risk employees mapped to your portfolio.")
-        else: st.error("Manager ID not found.")
+                    cols[1].markdown(f"<span style='color:red; font-weight:500;'>{row['MAIN_GROUP']}</span>", unsafe_allow_html=True)
+                    cols[2].markdown(f"<span style='color:red'>{row['GRADE']}</span>", unsafe_allow_html=True)
+                    cols[3].markdown(f"<span style='color:red; font-weight:bold;'>{row['Attrition_Risk_Percentage']:.1f}%</span>", unsafe_allow_html=True)
+                    
+                    if cols[4].button("Remarks", key=f"hr_rem_{row['EMPID']}"):
+                        st.session_state['remarks_empid'] = row['EMPID']
+                        st.session_state['current_page'] = "Remarks"
+                        st.rerun()
+            else:
+                st.success("No high-risk employees mapped to your portfolio.")
 
 
 # --- PAGE 4: REMARKS INTERVENTION FORM & MODEL RECALIBRATION ---
