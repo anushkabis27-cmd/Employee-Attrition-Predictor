@@ -7,6 +7,13 @@ import os
 # --- 1. CONFIGURATION ---
 st.set_page_config(page_title="iRetain | Workforce Analytics", layout="wide")
 
+# --- SAFE RERUN UTILITY (Prevents navigation freeze on older environments) ---
+def safe_rerun():
+    try:
+        st.rerun()
+    except AttributeError:
+        st.experimental_rerun()
+
 # --- 2. REFINED PROFESSIONAL UI CSS WITH MINIMALIST SIDEBAR ---
 st.markdown("""
     <link rel='stylesheet' href='https://fonts.googleapis.com/css2?family=Mulish:wght=600;700&display=swap'>
@@ -124,9 +131,9 @@ def run_portfolio_trigger_check(df, manager_id):
     
     high_risk_share = (active_high_risk / total_count * 100) if total_count > 0 else 0
     
-    # SYSTEM TRIGGER: Checked and flagged if the share of pending high risk cases exceeds 10%
+    # 10% ALERT SHARED PORTFOLIO THRESHOLD
     if high_risk_share > 10.0: 
-        st.warning(f"System Trigger Notification Issued: Your portfolio's High Risk share is {high_risk_share:.1f}%. Please intervene immediately.")
+        st.warning(f"🚨 System Trigger Notification Issued: Your portfolio pending High Risk share is {high_risk_share:.1f}% (exceeding the 10% organizational limit). ER Manager must intervene immediately.")
 
 
 # --- 4. DATA LOADING ENGINE ---
@@ -136,7 +143,7 @@ def load_base_data():
     if not os.path.exists(file_path):
         st.error(f"Required Excel spreadsheet asset '{file_path}' could not be found in the current directory.")
         st.stop()
-    
+        
     try:
         df = pd.read_excel(file_path, sheet_name='Master Attrition Data')
     except Exception:
@@ -163,7 +170,7 @@ if 'er_authenticated' not in st.session_state: st.session_state['er_authenticate
 # --- 5. SIDEBAR NAVIGATION CONTROLLER ---
 st.sidebar.title("iRETAIN")
 st.sidebar.markdown("---")
-page_options = ["Zone wise turnover prediction", "Employee risk indicator", "ER Manager Portal", "Remarks"]
+page_options = ["Zone wise turnover prediction", "Employee risk indicator", "ER Manager Portal", "Feedback Form"]
 
 if st.session_state['current_page'] in page_options:
     default_index = page_options.index(st.session_state['current_page'])
@@ -175,7 +182,7 @@ selected_sidebar = st.sidebar.radio("NAVIGATION", page_options, index=default_in
 
 if selected_sidebar != st.session_state['current_page']:
     st.session_state['current_page'] = selected_sidebar
-    if selected_sidebar != "Employee risk indicator" and selected_sidebar != "Remarks":
+    if selected_sidebar != "Employee risk indicator" and selected_sidebar != "Feedback Form":
         st.session_state['selected_empid'] = None
 
 
@@ -295,14 +302,10 @@ elif st.session_state['current_page'] == "Employee risk indicator":
                 st.markdown(f"<div class='report-card' style='border-left-color: {h_color};'><h4>Mitigation Actionables</h4>", unsafe_allow_html=True)
                 if row.get('Intervention_Status', 'Not started') == 'Completed':
                     st.write("• **Intervention Concluded:** Feedback form logged successfully.")
-                
-                # REVISED HIGH RISK MITIGATION TRACK
                 elif level == 'High':
                     st.write("• **Urgent Action Needed:** Immediate 1:1 session with ER Manager.")
                     st.write("• Discuss career aspirations & growth expectations within organization.")
-                    st.write("• Map short-term milestones, internal recognition hooks, and upskilling goals.")
-                    st.write("• Explore structural paths like branch transfers or flexible arrangements to handle travel strain.")
-                
+                    st.write("• Explore transfers or flexible arrangements to manage distance from home.")
                 elif level == 'Medium':
                     st.write("• Engage in career path alignment discussions.")
                 else: 
@@ -349,7 +352,6 @@ elif st.session_state['current_page'] == "ER Manager Portal":
         active_id = st.session_state['current_manager_id']
         manager_df = df[df['ER manager ID'] == active_id]
         
-        # Runs check based on active pending case weight limits
         run_portfolio_trigger_check(df, active_id)
 
         total_employees_mapped = len(manager_df)
@@ -394,21 +396,25 @@ elif st.session_state['current_page'] == "ER Manager Portal":
                 
                 if cols[4].button("Remarks", key=f"hr_rem_{row['EMPID']}"):
                     st.session_state['remarks_empid'] = row['EMPID']
-                    st.session_state['current_page'] = "Remarks"
+                    st.session_state['current_page'] = "Feedback Form"
                     st.rerun()
         else:
             st.success("No high-risk pending employee interventions remain in your active work list.")
 
 
-# --- PAGE 4: REMARKS INTERVENTION ---
+# --- PAGE 4: FEEDBACK FORM INTERVENTION ---
 elif st.session_state['current_page'] == "Feedback Form":
     st.markdown("<h1 class='centered-title'>Feedback Form</h1>", unsafe_allow_html=True)
     
+    # REVISED SPECIFIC EMPTY FALLBACK STATE NOTIFICATION MESSAGE
     if not st.session_state['remarks_empid']:
-        st.info("Please select an employee ID inside the ER Manager Portal to open the evaluation matrix.")
-        if st.button("Go to ER Portal"):
-            st.session_state['current_page'] = "ER Manager Portal"
-            st.rerun()
+        st.info("Please select an employee ID inside the ER Manager Portal to open the evaluation matrix")
+        
+        col_nav, _ = st.columns([1.5, 3])
+        with col_nav:
+            if st.button("Go to ER Portal"):
+                st.session_state['current_page'] = "ER Manager Portal"
+                st.rerun()
     else:
         target_id = st.session_state['remarks_empid']
         emp_records = df[df['EMPID'] == target_id]
@@ -422,6 +428,7 @@ elif st.session_state['current_page'] == "Feedback Form":
             st.markdown(f"**Context Profile:** {emp_data['MAIN_GROUP']} | **Current Baseline:** <span style='color:red; font-weight:bold;'>{base_pct:.1f}% ({base_tier})</span>", unsafe_allow_html=True)
             
             if st.button("Cancel & Return to Dashboard"):
+                st.session_state['remarks_empid'] = None
                 st.session_state['current_page'] = "ER Manager Portal"
                 st.rerun()
                 
@@ -439,7 +446,6 @@ elif st.session_state['current_page'] == "Feedback Form":
                 
                 text_comments = st.text_area("Comments", placeholder="Enter any other remarks ...")
                 
-                # BUTTON NAME REVISED TO "Submit"
                 submit_form = st.form_submit_button("Submit")
                 
                 if submit_form:
@@ -467,7 +473,6 @@ elif st.session_state['current_page'] == "Feedback Form":
                         adjusted_risk = min(adjusted_risk, 50.0)
                         adjusted_tier = classify_revised_risk_tier(adjusted_risk)
                     
-                    # CALCULATING THE EXACT DELTA AMOUNT
                     risk_delta = adjusted_risk - base_pct
                     if risk_delta < 0:
                         change_msg = f"decreased by {abs(risk_delta):.2f}%"
@@ -486,8 +491,7 @@ elif st.session_state['current_page'] == "Feedback Form":
                     except Exception:
                         st.session_state['master_data'].to_excel('SIP Data final.xlsx', index=False)
                     
-                    # REVISED SHIFT MESSAGE FEEDBACK
-                    st.success(f"Form Logged! Employee {target_id} marked as 'Completed' and succesfully moved out of task queue. Risk score {change_msg} (Moved from {base_pct:.1f}% to {adjusted_risk:.1f}%).")
+                    st.success(f"Form Logged! Employee {target_id} marked as 'Completed' and successfully moved out of task queue. Risk score {change_msg} (Moved from {base_pct:.1f}% to {adjusted_risk:.1f}%).")
                     
                     st.session_state['remarks_empid'] = None
                     st.session_state['current_page'] = "ER Manager Portal"
