@@ -41,7 +41,7 @@ st.markdown("""
     
     .chart-container { padding: 5px; }
 
-    /* CLEAN, MODERN SIDEBAR OVERRIDES: MULISH SEMIBOLD & BLACK TEXT INDEXING */
+    /* CLEAN, MODERN SIDEBAR OVERRIDES */
     [data-testid="stSidebar"] h1 {
         font-family: 'Mulish', sans-serif !important;
         font-weight: 700 !important;
@@ -126,27 +126,23 @@ def run_portfolio_trigger_check(df, manager_id):
         st.warning(f"System Trigger Notification Issued: ER Manager portfolio average risk is {avg_portfolio_risk:.1f}%. ER Manager must intervene immediately.")
 
 
-# --- 4. DATA LOADING ENGINE (WITH ENCODING FALLBACKS) ---
+# --- 4. DATA LOADING ENGINE (UPDATED FOR DIRECT EXCEL FILE ACCESS) ---
 @st.cache_data
 def load_base_data():
-    # Set to match the precise name of the active file asset
-    file_path = 'SIP Data final.xlsx - Master Attrition Data.csv'
+    file_path = 'SIP Data final.xlsx'
     if not os.path.exists(file_path):
-        st.error(f"Required database asset '{file_path}' could not be found.")
+        st.error(f"Required Excel spreadsheet asset '{file_path}' could not be found in the current directory.")
         st.stop()
     
-    # Cycle through encodings to permanently eliminate UnicodeDecodeError issues
-    for encoding_option in ['utf-8', 'utf-8-sig', 'latin-1', 'cp1252']:
-        try:
-            df = pd.read_csv(file_path, encoding=encoding_option)
-            df.columns = df.columns.str.strip()
-            return df
-        except UnicodeDecodeError:
-            continue
-            
-    # Terminal absolute safe fallback configuration if all decode tracks fail
-    st.error("Critical error: Unable to parse file characters securely due to file encoding anomalies.")
-    st.stop()
+    try:
+        # Load directly from the Master Attrition Data worksheet
+        df = pd.read_excel(file_path, sheet_name='Master Attrition Data')
+    except Exception:
+        # Fallback to the first worksheet if sheet name matches are customized
+        df = pd.read_excel(file_path, sheet_name=0)
+        
+    df.columns = df.columns.str.strip()
+    return df
 
 if 'master_data' not in st.session_state:
     st.session_state['master_data'] = load_base_data()
@@ -297,7 +293,7 @@ elif st.session_state['current_page'] == "Employee risk indicator":
             with col_b:
                 st.markdown(f"<div class='report-card' style='border-left-color: {h_color};'><h4>Mitigation Actionables</h4>", unsafe_allow_html=True)
                 if row.get('Intervention_Status', 'Not started') == 'Completed':
-                    st.write("• **Intervention Concluded:** Corporate retention talk logged successfully. Monitor loop asset running.")
+                    st.write("• **Intervention Concluded:** Corporate retention talk logged successfully.")
                 elif level == 'High': 
                     st.write("• **Urgent Action Needed:** Form context demands an immediate retention dialogue session.")
                 elif level == 'Medium':
@@ -350,7 +346,7 @@ elif st.session_state['current_page'] == "ER Manager Portal":
 
         mapped_total = len(manager_df)
         
-        # EXCLUSION HOOK: Hide completed tasks instantly from active queues
+        # EXCLUSION HOOK: Hide completed tasks instantly from active high risk lists
         mapped_high_risk_df = manager_df[
             (manager_df['Risk_Level'] == 'High') & 
             (manager_df['Intervention_Status'] != 'Completed')
@@ -450,13 +446,13 @@ elif st.session_state['current_page'] == "Remarks":
                     
                     # DYNAMIC MODIFIER CORE ENGINE: Automatically increase or decrease risk score
                     if weighted_score >= 4.0:
-                        adjusted_risk = base_pct * 0.60  # Risk decreases due to high satisfaction
+                        adjusted_risk = base_pct * 0.60  # Risk drops due to high satisfaction parameters
                         change_msg = "decreased substantially due to positive feedback indicators"
                     elif weighted_score >= 3.0:
-                        adjusted_risk = base_pct * 0.85  # Risk decreases slightly due to neutral stability
+                        adjusted_risk = base_pct * 0.85  # Risk drops slightly due to acceptable satisfaction feedback
                         change_msg = "decreased slightly due to acceptable satisfaction feedback"
                     elif weighted_score >= 2.0:
-                        adjusted_risk = base_pct * 1.10  # Risk increases slightly due to passive dissatisfaction
+                        adjusted_risk = base_pct * 1.10  # Risk increases due to structural dissatisfaction parameters
                         change_msg = "increased slightly due to low employee feedback scores"
                     else:
                         adjusted_risk = base_pct * 1.25  # Risk increases significantly due to severe distress
@@ -465,7 +461,7 @@ elif st.session_state['current_page'] == "Remarks":
                     adjusted_risk = min(max(adjusted_risk, 0.0), 100.0)
                     adjusted_tier = classify_revised_risk_tier(adjusted_risk)
                     
-                    # Executive hard-caps protection
+                    # Executive anchor hard-caps configuration
                     if str(emp_data['GRADE']).strip().upper() in ['ALT', 'CM']:
                         adjusted_risk = min(adjusted_risk, 50.0)
                         adjusted_tier = classify_revised_risk_tier(adjusted_risk)
@@ -475,8 +471,14 @@ elif st.session_state['current_page'] == "Remarks":
                     st.session_state['master_data'].loc[st.session_state['master_data']['EMPID'] == target_id, 'Risk_Level'] = adjusted_tier
                     st.session_state['master_data'].loc[st.session_state['master_data']['EMPID'] == target_id, 'Intervention_Status'] = 'Completed'
                     
-                    # PERSISTENCE ENGINE: Write back directly to disk storage file
-                    st.session_state['master_data'].to_csv('SIP Data final.xlsx - Master Attrition Data.csv', index=False)
+                    # PERSISTENCE ENGINE: Write back directly to the local Excel sheet target on disk
+                    try:
+                        # Saves safely back to the correct worksheet in your workbook
+                        with pd.ExcelWriter('SIP Data final.xlsx', engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
+                            st.session_state['master_data'].to_excel(writer, sheet_name='Master Attrition Data', index=False)
+                    except Exception:
+                        # Standard overwrite if workbook writing layers are protected
+                        st.session_state['master_data'].to_excel('SIP Data final.xlsx', index=False)
                     
                     st.success(f"Form Logged! Employee {target_id} marked as 'Completed' and successfully removed from tracking queues. Risk score {change_msg} (Moved from {base_pct:.1f}% to {adjusted_risk:.1f}%).")
                     
