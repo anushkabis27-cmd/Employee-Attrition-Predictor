@@ -298,24 +298,32 @@ elif st.session_state['current_page'] == "Employee risk indicator":
                         st.write("• High-risk markers detected in historical modeling.")
                     
                     if row.get('AGE', 0) < 30:
-                        st.write("• Vulnerable age segment (<30 years) with high market mobility.")
+                        st.write("• Vulnerable age segment (25 - 29 years) with high market mobility.")
                     if row.get('Distance From Home (KM)', row.get('Distance_From_Home_KM', 0)) > 1000:
-                        st.write(f"• Extreme commute stress detected ({row.get('Distance From Home (KM)', row.get('Distance_From_Home_KM', 0))} KM).")
+                        st.write(f"• Distance from Home location is High ({row.get('Distance From Home (KM)', row.get('Distance_From_Home_KM', 0))} KM).")
                 elif level == 'Medium':
-                    st.write("• Mid-tenure engagement dip detected.")
-                else: 
-                    st.write("• Stable organizational anchoring.")
-                st.markdown("</div>", unsafe_allow_html=True)
+    st.write("• Mid-tenure engagement dip detected.")
+
+    if TENURE_YRS >= 7:
+        st.write("• Career progression milestone approaching.")
+
+    if Distance From Home (KM) < 800:
+        st.write("• Location factors may influence retention.")
+
+else:
+    st.write("• Stable organizational anchoring.")
+
+st.markdown("</div>", unsafe_allow_html=True)
             
             with col_b:
                 st.markdown(f"<div class='report-card' style='border-left-color: {h_color};'><h4>Mitigation Actionables</h4>", unsafe_allow_html=True)
                 if level == 'High': 
                     st.write("• **ER Intervention:** Urgent 1:1 visit required.")
-                    st.write("• **Retention Talk:** Discuss internal mobility and role rotation.")
+                    st.write("• **:** Discuss internal mobility and role rotation.")
                 elif level == 'Medium':
                     st.write("• **Structured Connect:** ER Manager confidential 1:1.")
                 else: 
-                    st.write("• **Appreciation:** Nominate for performance award.")
+                    st.write("• **Role Mobility Risk:** Check for role stagnation indicators.")
                 st.markdown("</div>", unsafe_allow_html=True)
 
             # --- NATIVE DIALER IMPLEMENTATION CENTER ---
@@ -447,8 +455,8 @@ elif st.session_state['current_page'] == "Remarks":
                 likert_scales = {1: "Dissatisfied", 2: "Somewhat Dissatisfied", 3: "Neutral", 4: "Somewhat Satisfied", 5: "Satisfied"}
                 
                 # Parameters fully sanitized of extra words and formatting tags
-                s_manager = st.radio("Manager", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
-                s_role = st.radio("Role", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
+                s_manager = st.radio("Guidance and Support from RA", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
+                s_role = st.radio("Experience in the Role", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
                 s_team = st.radio("Team & Workplace Relationships", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
                 s_learning = st.radio("Learning & Training", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
                 s_growth = st.radio("Career Growth Opportunities", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
