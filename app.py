@@ -10,7 +10,7 @@ from email.mime.text import MIMEText
 # --- 1. CONFIGURATION ---
 st.set_page_config(page_title="iRetain | Workforce Analytics", layout="wide")
 
-# --- 2. REFINED PROFESSIONAL UI CSS ---
+# --- 2. REFINED PROFESSIONAL UI CSS WITH BLOCK-LEVEL SIDEBAR ---
 st.markdown("""
     <style>
     .main { background-color: #FFFFFF; color: #333333; }
@@ -41,6 +41,38 @@ st.markdown("""
     .small-btn-container div.stButton > button { padding: 5px !important; font-size: 13px !important; height: auto !important; margin-bottom: 8px; }
     
     .chart-container { padding: 5px; }
+
+    /* BLOCK LEVEL LINK OVERRIDES FOR SIDEBAR MENU ROWS */
+    [data-testid="stSidebar"] [data-testid="stWidgetFormWrapper"] {
+        width: 100%;
+    }
+    [data-testid="stSidebar"] div[role="radiogroup"] {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        gap: 2px;
+    }
+    [data-testid="stSidebar"] div[role="radiogroup"] label {
+        display: block !important;
+        width: 100% !important;
+        padding: 10px 15px !important;
+        margin: 0 !important;
+        border-radius: 4px;
+        transition: background-color 0.2s ease;
+        cursor: pointer !important;
+    }
+    /* Hover state for entire item row block */
+    [data-testid="stSidebar"] div[role="radiogroup"] label:hover {
+        background-color: rgba(255, 255, 255, 0.15);
+    }
+    /* Selected state item row highlight */
+    [data-testid="stSidebar"] div[role="radiogroup"] label[data-checked="true"] {
+        background-color: rgba(255, 255, 255, 0.25);
+    }
+    /* Ensure the internal text flows correctly without input margins forcing gaps */
+    [data-testid="stSidebar"] div[role="radiogroup"] label div[data-testid="stMarkdownContainer"] {
+        width: 100%;
+    }
     </style>
     """, unsafe_allow_html=True)
 
