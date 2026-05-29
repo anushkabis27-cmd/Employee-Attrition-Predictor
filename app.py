@@ -3,6 +3,9 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 # --- 1. CONFIGURATION ---
 st.set_page_config(page_title="iRetain | Workforce Analytics", layout="wide")
@@ -29,7 +32,8 @@ st.markdown("""
     /* Detail Page Styling */
     .risk-box { padding: 30px; border-radius: 20px; text-align: center; border: 2px solid; background: #FAFAFA; margin-bottom: 25px; }
     .big-font { font-size: 70px !important; font-weight: bold; }
-    .report-card { background: #FFFFFF; padding: 25px; border-radius: 15px; border-left: 5px solid #f37021; border-top: 1px solid #EEE; border-right: 1px solid #EEE; border-bottom: 1px solid #EEE; margin-bottom: 20px; }
+    .report-card { background: #FFFFFF; padding: 25px; border-radius: 15px; border-left: 5px solid #f37021;
+                   border-top: 1px solid #EEE; border-right: 1px solid #EEE; border-bottom: 1px solid #EEE; margin-bottom: 20px; }
 
     /* Button Styling */
     div.stButton > button { background-color: #f37021 !important; color: white !important; border-radius: 4px; border: none; width: 100%; font-weight: 600; }
@@ -40,37 +44,81 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. DATA LOADING ---
+
+# --- 3. AUTOMATED PORTFOLIO TRIGGER ENGINE ---
+def run_portfolio_trigger_check(df, manager_id):
+    """
+    Evaluates whether the ER Manager's portfolio average risk has risen significantly.
+    Compiles the top 10 highest risk employees if criteria are satisfied.
+    """
+    manager_portfolio = df[df['ER manager ID'] == manager_id]
+    if len(manager_portfolio) == 0:
+        return
+        
+    avg_portfolio_risk = manager_portfolio['Attrition_Risk_Percentage'].mean()
+    
+    # Automated system warning threshold
+    if avg_portfolio_risk > 40.0:
+        top_10_high_risk = manager_portfolio.sort_values(by='Attrition_Risk_Percentage', ascending=False).head(10)
+        
+        table_rows = ""
+        for _, row in top_10_high_risk.iterrows():
+            table_rows += f"""
+            <tr>
+                <td style='border: 1px solid #dddddd; padding: 8px;'>{row['EMPID']}</td>
+                <td style='border: 1px solid #dddddd; padding: 8px;'>{row['MAIN_GROUP']}</td>
+                <td style='border: 1px solid #dddddd; padding: 8px;'>{row['GRADE']}</td>
+                <td style='border: 1px solid #dddddd; padding: 8px; color: red; font-weight: bold;'>{row['Attrition_Risk_Percentage']:.1f}%</td>
+            </tr>
+            """
+            
+        st.warning(f"System Trigger Notification Issued: ER Manager portfolio average risk is {avg_portfolio_risk:.1f}%. ER Manager must intervene immediately.")
+        
+        # --- PRODUCTION MAILING CONFIGURATION BLOCK ---
+        # msg = MIMEMultipart('alternative')
+        # msg['Subject'] = f"IMMEDIATE INTERVENTION REQUIRED: High Risk Portfolio Alert (Manager ID: {manager_id})"
+        # msg['From'] = "hr-alerts@company.com"
+        # msg['To'] = f"manager_{manager_id}@company.com"
+
+
+# --- 4. DATA LOADING & STATE SESSION INITIALIZATION ---
 @st.cache_data
-def load_data():
+def load_base_data():
     file_path = 'Attrition11 (2).xlsx'
     if not os.path.exists(file_path):
-        st.error(f"⚠️ File Not Found: {file_path}")
+        st.error(f"File Not Found: {file_path}")
         st.stop()
-    # Pull from the master data array sheet directly
     df = pd.read_excel(file_path, sheet_name=0)
     df.columns = df.columns.str.strip()
     return df
 
-df = load_data()
+# Initialize Session Dataframe if not yet declared to allow data updates
+if 'master_data' not in st.session_state:
+    st.session_state['master_data'] = load_base_data()
 
-# --- 4. STATE MANAGEMENT ---
+df = st.session_state['master_data']
+
+# App Navigation Variables
 if 'view_mode' not in st.session_state: st.session_state['view_mode'] = 'Percentage'
 if 'risk_filter' not in st.session_state: st.session_state['risk_filter'] = 'High'
 if 'current_page' not in st.session_state: st.session_state['current_page'] = "Zone wise turnover prediction"
 if 'selected_empid' not in st.session_state: st.session_state['selected_empid'] = None
+if 'remarks_empid' not in st.session_state: st.session_state['remarks_empid'] = None
+if 'current_manager_id' not in st.session_state: st.session_state['current_manager_id'] = None
+
 
 # --- 5. SIDEBAR NAVIGATION ---
-st.sidebar.title("💠 iRETAIN")
+st.sidebar.title("iRETAIN")
 st.sidebar.markdown("---")
-page_options = ["Zone wise turnover prediction", "Employee risk indicator", "ER Login"]
+page_options = ["Zone wise turnover prediction", "Employee risk indicator", "ER Login", "Remarks Form"]
 selected_sidebar = st.sidebar.radio("NAVIGATION", page_options, 
                                     index=page_options.index(st.session_state['current_page']))
 
 if selected_sidebar != st.session_state['current_page']:
     st.session_state['current_page'] = selected_sidebar
-    if selected_sidebar != "Employee risk indicator":
+    if selected_sidebar != "Employee risk indicator" and selected_sidebar != "Remarks Form":
         st.session_state['selected_empid'] = None
+
 
 # --- PAGE 1: ZONE WISE RISK SUMMARY ---
 if st.session_state['current_page'] == "Zone wise turnover prediction":
@@ -131,17 +179,17 @@ if st.session_state['current_page'] == "Zone wise turnover prediction":
         if st.button("In Percentage"): st.session_state['view_mode'] = 'Percentage'
         st.markdown('</div>', unsafe_allow_html=True)
 
+
 # --- PAGE 2: EMPLOYEE RISK INDICATOR ---
 elif st.session_state['current_page'] == "Employee risk indicator":
     st.markdown("<h1 class='centered-title'>Employee Risk Indicator</h1>", unsafe_allow_html=True)
     if st.session_state['selected_empid']:
         emp_id = st.session_state['selected_empid']
-        if st.button("⬅️ Back to ER Dashboard"):
+        if st.button("Back to ER Dashboard"):
             st.session_state['selected_empid'] = None
             st.session_state['current_page'] = "ER Login"
             st.rerun()
     else: 
-        # Line 145 corrected by verifying closing parenthesis scoping from the outer context block
         emp_id = st.number_input("Enter EMPID to search", min_value=0, step=1)
 
     if emp_id:
@@ -152,9 +200,10 @@ elif st.session_state['current_page'] == "Employee risk indicator":
             level = row.get('Risk_Level', 'Low')
             tenure = row.get('TENURE_YRS', 0)
             h_color = "#D7191C" if level == 'High' else ("#FFCC00" if level == 'Medium' else "#28A745")
+            
             st.markdown(f"<div class='risk-box' style='border-color: {h_color}; color: {h_color};'><p class='big-font'>{score:.1f}%</p><h1>{level.upper()} RISK</h1></div>", unsafe_allow_html=True)
             
-            st.subheader("📋 Employee Profile Details")
+            st.subheader("Employee Profile Details")
             c1, c2, c3 = st.columns(3)
             with c1: 
                 st.write(f"**EMPID:** {row['EMPID']}")
@@ -171,7 +220,7 @@ elif st.session_state['current_page'] == "Employee risk indicator":
             st.divider()
             col_a, col_b = st.columns(2)
             with col_a:
-                st.markdown("<div class='report-card'><h4>🔍 Risk Factor Analysis</h4>", unsafe_allow_html=True)
+                st.markdown("<div class='report-card'><h4>Risk Factor Analysis</h4>", unsafe_allow_html=True)
                 if level == 'High':
                     if 3 <= tenure <= 5:
                         st.write("• Profile falls within Critical Attrition Window (3-5 years).")
@@ -183,14 +232,15 @@ elif st.session_state['current_page'] == "Employee risk indicator":
                     if row.get('AGE', 0) < 30:
                         st.write("• Vulnerable age segment (<30 years) with high market mobility.")
                     if row.get('Distance From Home (KM)', row.get('Distance_From_Home_KM', 0)) > 1000:
-                        st.write(f"• Distance from Home is High ({row.get('Distance From Home (KM)', row.get('Distance_From_Home_KM', 0))} KM).")
+                        st.write(f"• Extreme commute stress detected ({row.get('Distance From Home (KM)', row.get('Distance_From_Home_KM', 0))} KM).")
                 elif level == 'Medium':
                     st.write("• Mid-tenure engagement dip detected.")
                 else: 
                     st.write("• Stable organizational anchoring.")
                 st.markdown("</div>", unsafe_allow_html=True)
+            
             with col_b:
-                st.markdown(f"<div class='report-card' style='border-left-color: {h_color};'><h4>🚀 Mitigation Actionables</h4>", unsafe_allow_html=True)
+                st.markdown(f"<div class='report-card' style='border-left-color: {h_color};'><h4>Mitigation Actionables</h4>", unsafe_allow_html=True)
                 if level == 'High': 
                     st.write("• **ER Intervention:** Urgent 1:1 visit required.")
                     st.write("• **Retention Talk:** Discuss internal mobility and role rotation.")
@@ -199,16 +249,41 @@ elif st.session_state['current_page'] == "Employee risk indicator":
                 else: 
                     st.write("• **Appreciation:** Nominate for performance award.")
                 st.markdown("</div>", unsafe_allow_html=True)
+
+            # --- NATIVE DIALER IMPLEMENTATION ---
+            st.divider()
+            st.write("#### Action Center")
+            mock_phone = f"+9198765{str(int(row['EMPID']))[-5:]}" if not pd.isna(row['EMPID']) else "+919999999999"
+            
+            col_call, _ = st.columns([1.5, 3])
+            with col_call:
+                st.markdown(
+                    f"""
+                    <a href="tel:{mock_phone}" style="text-decoration: none;">
+                        <div style="background-color: #003366; color: white; text-align: center; 
+                                    padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer;">
+                            Call Employee ({mock_phone})
+                        </div>
+                    </a>
+                    """, 
+                    unsafe_allow_html=True
+                )
         else: st.error("EMPID not found.")
+
 
 # --- PAGE 3: ER LOGIN ---
 elif st.session_state['current_page'] == "ER Login":
     st.markdown("<h1 class='centered-title'>ER Manager Portal</h1>", unsafe_allow_html=True)
-    er_id = st.number_input("Enter ER Manager ID", min_value=0, step=1)
+    er_id = st.number_input("Enter ER Manager ID", min_value=0, step=1, value=st.session_state['current_manager_id'] if st.session_state['current_manager_id'] else 0)
     
     if er_id:
+        st.session_state['current_manager_id'] = er_id
         if 'ER manager ID' in df.columns and er_id in df['ER manager ID'].values:
             manager_df = df[df['ER manager ID'] == er_id]
+            
+            # Execute email alarm check logic automatically
+            run_portfolio_trigger_check(df, er_id)
+
             mapped_total = len(manager_df)
             mapped_high_risk_df = manager_df[manager_df['Risk_Level'] == 'High'].sort_values(by='Attrition_Risk_Percentage', ascending=False)
             mapped_high_risk_count = len(mapped_high_risk_df)
@@ -221,23 +296,125 @@ elif st.session_state['current_page'] == "ER Login":
             with m3: st.markdown(f"<div class='metric-container'><div class='metric-label'>High Risk (%)</div><div class='metric-value'>{mapped_high_risk_pct:.1f}%</div></div>", unsafe_allow_html=True)
 
             st.divider()
-            with st.expander("Show High Risk Employees"):
-                if not mapped_high_risk_df.empty:
-                    st.write("Click an EMPID to view detail analysis.")
-                    header = st.columns([1, 2, 1, 1])
-                    header[0].write("**EMPID**"); header[1].write("**Group**"); header[2].write("**Grade**"); header[3].write("**Risk %**")
+            
+            st.write("#### Active Portfolio Registry")
+            portfolio_selection = manager_df.sort_values(by='Attrition_Risk_Percentage', ascending=False)
+            
+            if not portfolio_selection.empty:
+                # Table Headers
+                h_cols = st.columns([1, 2, 1, 1, 1.2])
+                h_cols[0].write("**EMPID**")
+                h_cols[1].write("**Group**")
+                h_cols[2].write("**Grade**")
+                h_cols[3].write("**Risk %**")
+                h_cols[4].write("**Actions**")
+                st.markdown("---")
+
+                for index, row in portfolio_selection.iterrows():
+                    cols = st.columns([1, 2, 1, 1, 1.2])
                     
-                    for i, (index, row) in enumerate(mapped_high_risk_df.iterrows()):
-                        cols = st.columns([1, 2, 1, 1])
-                        risk_color = "red" if i < 5 else "black"
+                    r_color = "red" if row['Risk_Level'] == "High" else ("#FFCC00" if row['Risk_Level'] == "Medium" else "green")
+                    
+                    if cols[0].button(str(row['EMPID']), key=f"p_view_{row['EMPID']}"):
+                        st.session_state['selected_empid'] = row['EMPID']
+                        st.session_state['current_page'] = "Employee risk indicator"
+                        st.rerun()
                         
-                        if cols[0].button(str(row['EMPID']), key=f"btn_{row['EMPID']}"):
-                            st.session_state['selected_empid'] = row['EMPID']
-                            st.session_state['current_page'] = "Employee risk indicator"
-                            st.rerun()
-                        
-                        cols[1].markdown(f"<span style='color:{risk_color}'>{row['MAIN_GROUP']}</span>", unsafe_allow_html=True)
-                        cols[2].markdown(f"<span style='color:{risk_color}'>{row['GRADE']}</span>", unsafe_allow_html=True)
-                        cols[3].markdown(f"<span style='color:{risk_color}'>{row['Attrition_Risk_Percentage']:.1f}%</span>", unsafe_allow_html=True)
-                else: st.success("No high-risk employees mapped to your portfolio.")
+                    cols[1].markdown(f"<span style='color:{r_color}; font-weight:500;'>{row['MAIN_GROUP']}</span>", unsafe_allow_html=True)
+                    cols[2].markdown(f"<span style='color:{r_color}'>{row['GRADE']}</span>", unsafe_allow_html=True)
+                    cols[3].markdown(f"<span style='color:{r_color}; font-weight:bold;'>{row['Attrition_Risk_Percentage']:.1f}%</span>", unsafe_allow_html=True)
+                    
+                    # Remarks Action Button
+                    if cols[4].button("Remarks Form", key=f"rem_{row['EMPID']}"):
+                        st.session_state['remarks_empid'] = row['EMPID']
+                        st.session_state['current_page'] = "Remarks Form"
+                        st.rerun()
+            else:
+                st.success("No active employees mapped to your portfolio.")
         else: st.error("Manager ID not found.")
+
+
+# --- PAGE 4: REMARKS INTERVENTION FORM & DYNAMIC RECALIBRATION ---
+elif st.session_state['current_page'] == "Remarks Form":
+    st.markdown("<h1 class='centered-title'>Remarks Form</h1>", unsafe_allow_html=True)
+    
+    if not st.session_state['remarks_empid']:
+        st.info("Please select an employee inside the ER Login page to access the active evaluation.")
+        if st.button("Go to ER Portal"):
+            st.session_state['current_page'] = "ER Login"
+            st.rerun()
+    else:
+        target_id = st.session_state['remarks_empid']
+        emp_records = df[df['EMPID'] == target_id]
+        
+        if not emp_records.empty:
+            emp_data = emp_records.iloc[0]
+            base_pct = emp_data['Attrition_Risk_Percentage']
+            base_tier = emp_data['Risk_Level']
+            
+            st.subheader(f"Pulse Questionnaire for EMPID: {target_id}")
+            st.markdown(f"**Context Profile:** {emp_data['MAIN_GROUP']} | **Current Baseline:** <span style='color:red; font-weight:bold;'>{base_pct:.1f}% ({base_tier})</span>", unsafe_allow_html=True)
+            
+            if st.button("Cancel & Return to Dashboard"):
+                st.session_state['current_page'] = "ER Login"
+                st.rerun()
+                
+            st.divider()
+            
+            with st.form("remarks_capture_form"):
+                status_dropdown = st.selectbox("Status", options=["Not started", "Ongoing", "Completed"])
+                
+                st.markdown("##### Feedback Parameters")
+                likert_scales = {1: "Dissatisfied", 2: "Somewhat Dissatisfied", 3: "Neutral", 4: "Somewhat Satisfied", 5: "Satisfied"}
+                
+                s_manager = st.radio("Manager Feedback (Highest Weight)", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
+                s_role = st.radio("Role Feedback (High Weight)", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
+                s_team = st.radio("Team & Workplace Relationships Feedback (High Weight)", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
+                s_learning = st.radio("Learning & Training Feedback", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
+                s_growth = st.radio("Career Growth Opportunities Feedback", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
+                
+                text_comments = st.text_area("Manager Notes", placeholder="Enter notes from conversation here...")
+                
+                submit_form = st.form_submit_button("Submit")
+                
+                if submit_form:
+                    # Priority-Weighted Score Logic (Manager: 30%, Role: 25%, Team: 20%, others: 12.5% each)
+                    weighted_score = (
+                        (s_manager * 0.30) + 
+                        (s_role * 0.25) + 
+                        (s_team * 0.20) + 
+                        (s_learning * 0.125) + 
+                        (s_growth * 0.125)
+                    )
+                    
+                    # Risk mitigation modifier application based on status parameters
+                    if status_dropdown == "Completed":
+                        if weighted_score >= 4.0:
+                            adjusted_risk = base_pct * 0.35   # Major risk drop for excellent sentiment
+                        elif weighted_score >= 2.8:
+                            adjusted_risk = base_pct * 0.60   # Moderate risk drop
+                        else:
+                            adjusted_risk = base_pct * 0.85   # Minor drop for low fulfillment resolutions
+                    elif status_dropdown == "Ongoing":
+                        adjusted_risk = base_pct * 0.80       # Uniform 20% drop during open intervention
+                    else:
+                        adjusted_risk = base_pct              # Unaltered if not started
+                        
+                    # Enforce data limits
+                    adjusted_risk = min(max(adjusted_risk, 0.0), 100.0)
+                    
+                    # Recalculate operational risk tier thresholds
+                    if adjusted_risk < 30.0:
+                        adjusted_tier = "Low"
+                    elif adjusted_risk < 60.0:
+                        adjusted_tier = "Medium"
+                    else:
+                        adjusted_tier = "High"
+                        
+                    # Update active session configuration states
+                    st.session_state['master_data'].loc[st.session_state['master_data']['EMPID'] == target_id, 'Attrition_Risk_Percentage'] = adjusted_risk
+                    st.session_state['master_data'].loc[st.session_state['master_data']['EMPID'] == target_id, 'Risk_Level'] = adjusted_tier
+                    
+                    st.success(f"Form submitted. Updated attrition risk score for EMPID {target_id} dropped from {base_pct:.1f}% to {adjusted_risk:.1f}% ({adjusted_tier}).")
+        else:
+            st.error("Error matching requested employee data references.")
