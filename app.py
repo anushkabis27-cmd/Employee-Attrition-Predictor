@@ -3,9 +3,6 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 
 # --- 1. CONFIGURATION ---
 st.set_page_config(page_title="iRetain | Workforce Analytics", layout="wide")
@@ -44,7 +41,9 @@ st.markdown("""
     
     .chart-container { padding: 5px; }
 
-    /* BLOCK LEVEL LINK OVERRIDES FOR SIDEBAR MENU ROWS */
+    /* =========================================================================
+       CLEAN, MODERN SIDEBAR OVERRIDES: MULISH SEMIBOLD & BLACK TEXT INDEXING
+       ========================================================================= */
     [data-testid="stSidebar"] h1 {
         font-family: 'Mulish', sans-serif !important;
         font-weight: 700 !important;
@@ -105,54 +104,42 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 
-# --- 3. AUTOMATED PORTFOLIO TRIGGER ENGINE ---
+# --- 3. RECALIBRATED BRACKET CLASSIFICATION ENGINE ---
+def classify_revised_risk_tier(score):
+    """
+    Evaluates continuous risk scores using the newly updated segmentation brackets:
+    - Low Risk: 0% to 20%
+    - Medium Risk: 21% to 50%
+    - High Risk: 51% to 100%
+    """
+    if score <= 20.0:
+        return 'Low'
+    elif score <= 50.0:
+        return 'Medium'
+    else:
+        return 'High'
+
 def run_portfolio_trigger_check(df, manager_id):
-    """
-    Evaluates whether the ER Manager's portfolio average risk has risen significantly.
-    Compiles the top 10 highest risk employees if criteria are satisfied.
-    """
     manager_portfolio = df[df['ER manager ID'] == manager_id]
     if len(manager_portfolio) == 0:
         return
-        
     avg_portfolio_risk = manager_portfolio['Attrition_Risk_Percentage'].mean()
-    
-    # Automated system warning threshold
-    if avg_portfolio_risk > 40.0:
-        top_10_high_risk = manager_portfolio.sort_values(by='Attrition_Risk_Percentage', ascending=False).head(10)
-        
-        table_rows = ""
-        for _, row in top_10_high_risk.iterrows():
-            table_rows += f"""
-            <tr>
-                <td style='border: 1px solid #dddddd; padding: 8px;'>{row['EMPID']}</td>
-                <td style='border: 1px solid #dddddd; padding: 8px;'>{row['MAIN_GROUP']}</td>
-                <td style='border: 1px solid #dddddd; padding: 8px;'>{row['GRADE']}</td>
-                <td style='border: 1px solid #dddddd; padding: 8px; color: red; font-weight: bold;'>{row['Attrition_Risk_Percentage']:.1f}%</td>
-            </tr>
-            """
-            
+    if avg_portfolio_risk > 45.0: 
         st.warning(f"System Trigger Notification Issued: ER Manager portfolio average risk is {avg_portfolio_risk:.1f}%. ER Manager must intervene immediately.")
-        
-        # --- PRODUCTION MAILING CONFIGURATION BLOCK ---
-        # msg = MIMEMultipart('alternative')
-        # msg['Subject'] = f"IMMEDIATE INTERVENTION REQUIRED: High Risk Portfolio Alert (Manager ID: {manager_id})"
-        # msg['From'] = "hr-alerts@company.com"
-        # msg['To'] = f"manager_{manager_id}@company.com"
 
 
-# --- 4. DATA LOADING & STATE SESSION INITIALIZATION ---
+# --- 4. DATA LOADING ENGINE ---
 @st.cache_data
 def load_base_data():
     file_path = 'Attrition11 (2).xlsx'
     if not os.path.exists(file_path):
-        st.error(f"File Not Found: {file_path}")
+        st.error("Required database spreadsheet asset could not be loaded safely.")
         st.stop()
+    
     df = pd.read_excel(file_path, sheet_name=0)
     df.columns = df.columns.str.strip()
     return df
 
-# Initialize Session Dataframe if not yet declared to allow data updates
 if 'master_data' not in st.session_state:
     st.session_state['master_data'] = load_base_data()
 
@@ -168,12 +155,11 @@ if 'current_manager_id' not in st.session_state: st.session_state['current_manag
 if 'er_authenticated' not in st.session_state: st.session_state['er_authenticated'] = False
 
 
-# --- 5. SIDEBAR NAVIGATION CONTROLLER WITH SAFE FALLBACK ---
+# --- 5. SIDEBAR NAVIGATION CONTROLLER ---
 st.sidebar.title("iRETAIN")
 st.sidebar.markdown("---")
 page_options = ["Zone wise turnover prediction", "Employee risk indicator", "ER Manager Portal", "Remarks"]
 
-# Check if the active session matches options array exactly to prevent ValueError index crashes
 if st.session_state['current_page'] in page_options:
     default_index = page_options.index(st.session_state['current_page'])
 else:
@@ -276,7 +262,7 @@ elif st.session_state['current_page'] == "Employee risk indicator":
             with c1: 
                 st.write(f"**EMPID:** {row['EMPID']}")
                 st.write(f"**Grade:** {row['GRADE']}")
-                st.write(f"**Work Location:** {row.get('Work_Location', row.get('Office_Location', 'N/A'))}")
+                st.write(f"**Work Location:** {row.get('Work_Location', 'N/A')}")
             with c2: 
                 st.write(f"**Age:** {row['AGE']}")
                 st.write(f"**Tenure:** {tenure} Yrs")
@@ -289,61 +275,40 @@ elif st.session_state['current_page'] == "Employee risk indicator":
             col_a, col_b = st.columns(2)
             with col_a:
                 st.markdown("<div class='report-card'><h4>Risk Factor Analysis</h4>", unsafe_allow_html=True)
-                if level == 'High':
-                    if 3 <= tenure <= 5:
-                        st.write("• Profile falls within Critical Attrition Window (3-5 years).")
-                    elif tenure > 10:
-                        st.write(f"• Long-tenure fatigue ({int(tenure)} years); may require role rotation.")
-                    else:
-                        st.write("• High-risk markers detected in historical modeling.")
-                    
-                    if row.get('AGE', 0) < 30:
-                        st.write("• Vulnerable age segment (25 - 29 years) with high market mobility.")
-                    if row.get('Distance From Home (KM)', row.get('Distance_From_Home_KM', 0)) > 1000:
-                        st.write(f"• Distance from Home location is High ({row.get('Distance From Home (KM)', row.get('Distance_From_Home_KM', 0))} KM).")
-                elif level == 'Medium':
-    st.write("• Mid-tenure engagement dip detected.")
-
-    if TENURE_YRS >= 7:
-        st.write("• Career progression milestone approaching.")
-
-    if Distance From Home (KM) < 800:
-        st.write("• Location factors may influence retention.")
-
-else:
-    st.write("• Stable organizational anchoring.")
-
-st.markdown("</div>", unsafe_allow_html=True)
+                if row['GRADE'] in ['ALT', 'CM']:
+                    st.write("• Highly stable organizational anchor profile. Capped strictly at Medium risk maximums.")
+                if 3.0 <= tenure <= 5.0:
+                    st.write("• Early career tenure friction identified (3-5 Year bracket vulnerability).")
+                if 25 <= row['AGE'] <= 29:
+                    st.write("• Highly volatile mobile age demographic bracket (25-29 years).")
+                if row.get('Distance From Home (KM)', 0) > 800:
+                    st.write("• Severe geographic displacement: Personnel is placed over 800 KM from home station.")
+                st.markdown("</div>", unsafe_allow_html=True)
             
             with col_b:
                 st.markdown(f"<div class='report-card' style='border-left-color: {h_color};'><h4>Mitigation Actionables</h4>", unsafe_allow_html=True)
                 if level == 'High': 
-                    st.write("• **ER Intervention:** Urgent 1:1 visit required.")
-                    st.write("• **:** Discuss internal mobility and role rotation.")
+                    st.write("• **Urgent Intervention Required:** Schedule dynamic corporate retention talk within 24 hours.")
+                    st.write("• Evaluate localized structural modifications or branch transfers to mitigate family isolation.")
                 elif level == 'Medium':
-                    st.write("• **Structured Connect:** ER Manager confidential 1:1.")
+                    st.write("• Open preventative dialogue frameworks to address milestone career adjustments.")
                 else: 
-                    st.write("• **Role Mobility Risk:** Check for role stagnation indicators.")
+                    st.write("• Maintain standardized performance recognition loops.")
                 st.markdown("</div>", unsafe_allow_html=True)
 
-            # --- NATIVE DIALER IMPLEMENTATION CENTER ---
             st.divider()
             st.write("#### Action Center")
             mock_phone = f"+9198765{str(int(row['EMPID']))[-5:]}" if not pd.isna(row['EMPID']) else "+919999999999"
             
             col_call, _ = st.columns([1.5, 3])
             with col_call:
-                st.markdown(
-                    f"""
+                st.markdown(f"""
                     <a href="tel:{mock_phone}" style="text-decoration: none;">
-                        <div style="background-color: #003366; color: white; text-align: center; 
-                                    padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer;">
+                        <div style="background-color: #003366; color: white; text-align: center; padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer;">
                             Call Employee ({mock_phone})
                         </div>
                     </a>
-                    """, 
-                    unsafe_allow_html=True
-                )
+                """, unsafe_allow_html=True)
         else: st.error("EMPID not found.")
 
 
@@ -351,7 +316,6 @@ st.markdown("</div>", unsafe_allow_html=True)
 elif st.session_state['current_page'] == "ER Manager Portal":
     st.markdown("<h1 class='centered-title'>ER Manager Portal</h1>", unsafe_allow_html=True)
     
-    # Input field layout structure
     col_input, col_btn = st.columns([3, 1])
     with col_input:
         input_er_id = st.number_input("Enter ER Manager ID", min_value=0, step=1, value=st.session_state['current_manager_id'] if st.session_state['current_manager_id'] else 0)
@@ -360,7 +324,6 @@ elif st.session_state['current_page'] == "ER Manager Portal":
         st.markdown("<div style='padding-top: 28px;'></div>", unsafe_allow_html=True)
         login_clicked = st.button("Log in")
 
-    # If the user clicks the explicit "Log in" button, update state configuration parameters
     if login_clicked:
         if 'ER manager ID' in df.columns and input_er_id in df['ER manager ID'].values:
             st.session_state['current_manager_id'] = input_er_id
@@ -369,12 +332,10 @@ elif st.session_state['current_page'] == "ER Manager Portal":
             st.session_state['er_authenticated'] = False
             st.error("Manager ID not found.")
 
-    # Render dashboard components only if authenticated status conditions pass successfully
     if st.session_state['er_authenticated'] and st.session_state['current_manager_id']:
         active_id = st.session_state['current_manager_id']
         manager_df = df[df['ER manager ID'] == active_id]
         
-        # Execute automated portfolio threshold scan alerts
         run_portfolio_trigger_check(df, active_id)
 
         mapped_total = len(manager_df)
@@ -389,9 +350,8 @@ elif st.session_state['current_page'] == "ER Manager Portal":
         with m3: st.markdown(f"<div class='metric-container'><div class='metric-label'>High Risk (%)</div><div class='metric-value'>{mapped_high_risk_pct:.1f}%</div></div>", unsafe_allow_html=True)
 
         st.divider()
-        
-        # Display High Risk Employees panel directly without tabs
         st.write("#### Show High Risk Employees")
+        
         if not mapped_high_risk_df.empty:
             h_cols_hr = st.columns([1, 2, 1, 1, 1.2])
             h_cols_hr[0].write("**EMPID**")
@@ -421,12 +381,12 @@ elif st.session_state['current_page'] == "ER Manager Portal":
             st.success("No high-risk employees mapped to your portfolio.")
 
 
-# --- PAGE 4: REMARKS INTERVENTION FORM & MODEL RECALIBRATION ---
+# --- PAGE 4: REMARKS INTERVENTION ---
 elif st.session_state['current_page'] == "Remarks":
     st.markdown("<h1 class='centered-title'>Remarks</h1>", unsafe_allow_html=True)
     
     if not st.session_state['remarks_empid']:
-        st.info("Please select an employee inside the ER Manager Portal to access active remarks entry forms.")
+        st.info("Please select an employee inside the ER Manager Portal to access active entries.")
         if st.button("Go to ER Portal"):
             st.session_state['current_page'] = "ER Manager Portal"
             st.rerun()
@@ -454,9 +414,8 @@ elif st.session_state['current_page'] == "Remarks":
                 st.markdown("##### Parameter Metrics")
                 likert_scales = {1: "Dissatisfied", 2: "Somewhat Dissatisfied", 3: "Neutral", 4: "Somewhat Satisfied", 5: "Satisfied"}
                 
-                # Parameters fully sanitized of extra words and formatting tags
-                s_manager = st.radio("Guidance and Support from RA", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
-                s_role = st.radio("Experience in the Role", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
+                s_manager = st.radio("Manager", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
+                s_role = st.radio("Role", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
                 s_team = st.radio("Team & Workplace Relationships", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
                 s_learning = st.radio("Learning & Training", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
                 s_growth = st.radio("Career Growth Opportunities", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
@@ -466,7 +425,7 @@ elif st.session_state['current_page'] == "Remarks":
                 submit_form = st.form_submit_button("Submit")
                 
                 if submit_form:
-                    # Priority-Weighted Score Logic (Manager: 30%, Role: 25%, Team: 20%, others: 12.5% each)
+                    # Apply priority matrix weights
                     weighted_score = (
                         (s_manager * 0.30) + 
                         (s_role * 0.25) + 
@@ -475,34 +434,29 @@ elif st.session_state['current_page'] == "Remarks":
                         (s_growth * 0.125)
                     )
                     
-                    # Risk mitigation modifier application based on status parameters
                     if status_dropdown == "Completed":
                         if weighted_score >= 4.0:
-                            adjusted_risk = base_pct * 0.35   # Major risk drop for excellent sentiment
+                            adjusted_risk = base_pct * 0.35  
                         elif weighted_score >= 2.8:
-                            adjusted_risk = base_pct * 0.60   # Moderate risk drop
+                            adjusted_risk = base_pct * 0.60  
                         else:
-                            adjusted_risk = base_pct * 0.85   # Minor drop for low fulfillment resolutions
+                            adjusted_risk = base_pct * 0.85  
                     elif status_dropdown == "Ongoing":
-                        adjusted_risk = base_pct * 0.80       # Uniform 20% drop during open intervention
+                        adjusted_risk = base_pct * 0.80      
                     else:
-                        adjusted_risk = base_pct              # Unaltered if not started
+                        adjusted_risk = base_pct              
                         
-                    # Enforce data limits
                     adjusted_risk = min(max(adjusted_risk, 0.0), 100.0)
+                    adjusted_tier = classify_revised_risk_tier(adjusted_risk)
                     
-                    # Recalculate operational risk tier thresholds
-                    if adjusted_risk < 30.0:
-                        adjusted_tier = "Low"
-                    elif adjusted_risk < 60.0:
-                        adjusted_tier = "Medium"
-                    else:
-                        adjusted_tier = "High"
+                    # Senior leadership safety hard-caps remain integrated post-recalibration
+                    if str(emp_data['GRADE']).strip().upper() in ['ALT', 'CM']:
+                        adjusted_risk = min(adjusted_risk, 50.0)
+                        adjusted_tier = classify_revised_risk_tier(adjusted_risk)
                         
-                    # Update active session configuration states
                     st.session_state['master_data'].loc[st.session_state['master_data']['EMPID'] == target_id, 'Attrition_Risk_Percentage'] = adjusted_risk
                     st.session_state['master_data'].loc[st.session_state['master_data']['EMPID'] == target_id, 'Risk_Level'] = adjusted_tier
                     
                     st.success(f"Form submitted. Updated attrition risk score for EMPID {target_id} dropped from {base_pct:.1f}% to {adjusted_risk:.1f}% ({adjusted_tier}).")
         else:
-            st.error("Error matching requested employee data references.")
+            st.error("Error matching requested employee references.")
