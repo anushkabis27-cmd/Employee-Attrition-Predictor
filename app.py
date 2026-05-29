@@ -41,7 +41,7 @@ st.markdown("""
     
     .chart-container { padding: 5px; }
 
-    /* SIDEBAR OVERRIDES */
+    /* CLEAN, MODERN SIDEBAR OVERRIDES: MULISH SEMIBOLD & BLACK TEXT INDEXING */
     [data-testid="stSidebar"] h1 {
         font-family: 'Mulish', sans-serif !important;
         font-weight: 700 !important;
@@ -126,13 +126,13 @@ def run_portfolio_trigger_check(df, manager_id):
         st.warning(f"System Trigger Notification Issued: ER Manager portfolio average risk is {avg_portfolio_risk:.1f}%. ER Manager must intervene immediately.")
 
 
-# --- 4. DATA LOADING ENGINE ---
+# --- 4. DATA LOADING ENGINE (UPDATED FILENAME) ---
 @st.cache_data
 def load_base_data():
-    # Make sure this filename matches your current active file path
-    file_path = 'Dynamic_Intervention_Attrition_Risk_Model.xlsx - Master Data.csv'
+    # Mentioning the correct updated dataset filename here
+    file_path = 'SIP Data final.xlsb.xlsx - Master Attrition Data.csv'
     if not os.path.exists(file_path):
-        st.error("Required database spreadsheet asset could not be loaded safely.")
+        st.error(f"Required database spreading asset '{file_path}' could not be loaded safely.")
         st.stop()
     
     df = pd.read_csv(file_path)
@@ -440,32 +440,31 @@ elif st.session_state['current_page'] == "Remarks":
                         (s_growth * 0.125)
                     )
                     
-                    # FEATURE AUTOMATION IMPLEMENTATION:
-                    # Form submission automatically executes the risk mitigation modifiers 
+                    # AUTOMATED FORM FEATURE INTEGRATION:
+                    # Direct form submission calculates the risk mitigation modifiers automatically
                     if weighted_score >= 4.0:
-                        adjusted_risk = base_pct * 0.35  # Dramatic risk mitigation (65% Drop)
+                        adjusted_risk = base_pct * 0.35  # Significant mitigation (65% drop)
                     elif weighted_score >= 2.8:
-                        adjusted_risk = base_pct * 0.60  # Moderate risk mitigation (40% Drop)
+                        adjusted_risk = base_pct * 0.60  # Moderate mitigation (40% drop)
                     else:
-                        adjusted_risk = base_pct * 0.85  # Low risk mitigation (15% Drop)
+                        adjusted_risk = base_pct * 0.85  # Low mitigation (15% drop)
                         
                     adjusted_risk = min(max(adjusted_risk, 0.0), 100.0)
                     adjusted_tier = classify_revised_risk_tier(adjusted_risk)
                     
-                    # Core corporate structural constraints protection logic
+                    # Strategic executive hard-caps stay integrated
                     if str(emp_data['GRADE']).strip().upper() in ['ALT', 'CM']:
                         adjusted_risk = min(adjusted_risk, 50.0)
                         adjusted_tier = classify_revised_risk_tier(adjusted_risk)
                     
-                    # Save updates back directly to the session memory data object
+                    # Update parameters directly inside memory data structure
                     st.session_state['master_data'].loc[st.session_state['master_data']['EMPID'] == target_id, 'Attrition_Risk_Percentage'] = adjusted_risk
                     st.session_state['master_data'].loc[st.session_state['master_data']['EMPID'] == target_id, 'Risk_Level'] = adjusted_tier
                     st.session_state['master_data'].loc[st.session_state['master_data']['EMPID'] == target_id, 'Intervention_Status'] = 'Completed'
                     
-                    # Feedback update to operator
-                    st.success(f"Success! Form submitted. Employee {target_id} has been marked as 'Completed' and successfully removed from active risk lists. Attrition risk shifted from {base_pct:.1f}% to {adjusted_risk:.1f}% ({adjusted_tier}).")
+                    st.success(f"Success! Form submitted. Employee {target_id} has been marked as 'Completed' and safely removed from active risk queues. Attrition risk shifted from {base_pct:.1f}% to {adjusted_risk:.1f}% ({adjusted_tier}).")
                     
-                    # Clear reference variables and reroute view back cleanly
+                    # Reset variables and navigate back smoothly
                     st.session_state['remarks_empid'] = None
                     st.session_state['current_page'] = "ER Manager Portal"
                     st.rerun()
