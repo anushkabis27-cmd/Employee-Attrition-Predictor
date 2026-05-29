@@ -14,7 +14,7 @@ def safe_rerun():
     except AttributeError:
         st.experimental_rerun()
 
-# --- 2. PROFESSIONAL UI CSS WITH SIDEBAR STYLING ---
+# --- 2. REFINED PROFESSIONAL UI CSS WITH MINIMALIST SIDEBAR ---
 st.markdown("""
     <link rel='stylesheet' href='https://fonts.googleapis.com/css2?family=Mulish:wght=600;700&display=swap'>
 
@@ -109,7 +109,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 
-# --- 3. RISK BRACKET ENGINE ---
+# --- 3. RECALIBRATED BRACKET CLASSIFICATION ENGINE ---
 def classify_revised_risk_tier(score):
     if score <= 20.0:
         return 'Low'
@@ -131,26 +131,23 @@ def run_portfolio_trigger_check(df, manager_id):
     
     high_risk_share = (active_high_risk / total_count * 100) if total_count > 0 else 0
     
-    # SYSTEM TRIGGER NOTIFICATION (NO EMOJIS, CLEAN TEXT)
     if high_risk_share > 10.0: 
         st.warning(f"System Trigger Notification Issued: Your portfolio pending High Risk share is {high_risk_share:.1f}%. Please intervene immediately.")
 
 
-# --- 4. HIGH-PERFORMANCE DATA ENGINE (CSV CACHE LAYER) ---
+# --- 4. DATA LOADING ENGINE (CSV CACHE LAYER FOR MAX PERFORMANCE) ---
 @st.cache_data
 def load_base_data():
     excel_path = 'SIP Data final.xlsx'
     cache_path = 'SIP Data final_active_cache.csv'
     
-    # If a lightweight active cache file already exists, load from it instantly
     if os.path.exists(cache_path):
         df = pd.read_csv(cache_path)
         df.columns = df.columns.str.strip()
         return df
         
-    # Otherwise, perform initial bootstrap load from master Excel workbook
     if not os.path.exists(excel_path):
-        st.error(f"Required Excel spreadsheet asset '{excel_path}' could not be found.")
+        st.error(f"Required Excel spreadsheet asset '{excel_path}' could not be found in the current directory.")
         st.stop()
         
     try:
@@ -159,7 +156,6 @@ def load_base_data():
         df = pd.read_excel(excel_path, sheet_name=0)
         
     df.columns = df.columns.str.strip()
-    # Save a high-speed copy to disk for subsequent app requests
     df.to_csv(cache_path, index=False)
     return df
 
@@ -176,7 +172,6 @@ if 'selected_empid' not in st.session_state: st.session_state['selected_empid'] 
 if 'remarks_empid' not in st.session_state: st.session_state['remarks_empid'] = None
 if 'current_manager_id' not in st.session_state: st.session_state['current_manager_id'] = None
 if 'er_authenticated' not in st.session_state: st.session_state['er_authenticated'] = False
-if 'last_submission_alert' not in st.session_state: st.session_state['last_submission_alert'] = None
 
 
 # --- 5. SIDEBAR NAVIGATION CONTROLLER ---
@@ -344,11 +339,6 @@ elif st.session_state['current_page'] == "Employee risk indicator":
 # --- PAGE 3: ER MANAGER PORTAL ---
 elif st.session_state['current_page'] == "ER Manager Portal":
     st.markdown("<h1 class='centered-title'>ER Manager Portal</h1>", unsafe_allow_html=True)
-    
-    # Render persistent notification banner instantly if an action was just completed
-    if st.session_state['last_submission_alert']:
-        st.success(st.session_state['last_submission_alert'])
-        st.session_state['last_submission_alert'] = None  
         
     col_input, col_btn = st.columns([3, 1])
     with col_input:
@@ -424,7 +414,6 @@ elif st.session_state['current_page'] == "ER Manager Portal":
 elif st.session_state['current_page'] == "Feedback Form":
     st.markdown("<h1 class='centered-title'>Feedback Form</h1>", unsafe_allow_html=True)
     
-    # REQUIRED STATE NOTIFICATION PHRASE (EMOJIS REMOVED)
     if not st.session_state['remarks_empid']:
         st.info("Please select an employee ID inside the ER Manager Portal to open the evaluation matrix")
         
@@ -435,85 +424,97 @@ elif st.session_state['current_page'] == "Feedback Form":
                 st.rerun()
     else:
         target_id = st.session_state['remarks_empid']
-        emp_records = df[df['EMPID'] == target_id]
         
-        if not emp_records.empty:
-            emp_data = emp_records.iloc[0]
-            base_pct = emp_data['Attrition_Risk_Percentage']
-            base_tier = emp_data['Risk_Level']
+        # Display step metrics result box upon form submission
+        if f"success_banner_{target_id}" in st.session_state and st.session_state[f"success_banner_{target_id}"]:
+            st.success(st.session_state[f"success_banner_{target_id}"])
             
-            st.subheader(f"Questionnaire for EMPID: {target_id}")
-            st.markdown(f"**Context Profile:** {emp_data['MAIN_GROUP']} | **Current Baseline:** <span style='color:red; font-weight:bold;'>{base_pct:.1f}% ({base_tier})</span>", unsafe_allow_html=True)
-            
-            if st.button("Cancel & Return to Dashboard"):
-                st.session_state['remarks_empid'] = None
-                st.session_state['current_page'] = "ER Manager Portal"
-                st.rerun()
-                
-            st.divider()
-            
-            with st.form("remarks_capture_form"):
-                st.markdown("##### Score Parameters Matrix")
-                likert_scales = {1: "Dissatisfied", 2: "Somewhat Dissatisfied", 3: "Neutral", 4: "Somewhat Satisfied", 5: "Satisfied"}
-                
-                s_manager = st.radio("Guidance & Support from Manager", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
-                s_role = st.radio("Experience in the Current Role", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
-                s_team = st.radio("Team & Workplace Environment", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
-                s_learning = st.radio("Learning & Training Ecosystem", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
-                s_growth = st.radio("Career Growth Opportunities", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
-                
-                text_comments = st.text_area("Comments", placeholder="Enter any other remarks ...")
-                
-                submit_form = st.form_submit_button("Submit")
-                
-                if submit_form:
-                    weighted_score = (
-                        (s_manager * 0.30) + 
-                        (s_role * 0.25) + 
-                        (s_team * 0.20) + 
-                        (s_learning * 0.125) + 
-                        (s_growth * 0.125)
-                    )
-                    
-                    if weighted_score >= 4.0:
-                        adjusted_risk = base_pct * 0.60
-                    elif weighted_score >= 3.0:
-                        adjusted_risk = base_pct * 0.85
-                    elif weighted_score >= 2.0:
-                        adjusted_risk = base_pct * 1.10
-                    else:
-                        adjusted_risk = base_pct * 1.25
-                        
-                    adjusted_risk = min(max(adjusted_risk, 0.0), 100.0)
-                    adjusted_tier = classify_revised_risk_tier(adjusted_risk)
-                    
-                    if str(emp_data['GRADE']).strip().upper() in ['ALT', 'CM']:
-                        adjusted_risk = min(adjusted_risk, 50.0)
-                        adjusted_tier = classify_revised_risk_tier(adjusted_risk)
-                    
-                    # PROTOTYPE NOTIFICATION ALGORITHM (Instant calculations)
-                    risk_delta = adjusted_risk - base_pct
-                    if risk_delta < 0:
-                        change_msg = f"decreased by {abs(risk_delta):.2f}%"
-                    elif risk_delta > 0:
-                        change_msg = f"increased by {risk_delta:.2f}%"
-                    else:
-                        change_msg = "remained unchanged"
-                    
-                    # 1. Update live application session state metrics (Instantaneous)
-                    st.session_state['master_data'].loc[st.session_state['master_data']['EMPID'] == target_id, 'Attrition_Risk_Percentage'] = adjusted_risk
-                    st.session_state['master_data'].loc[st.session_state['master_data']['EMPID'] == target_id, 'Risk_Level'] = adjusted_tier
-                    st.session_state['master_data'].loc[st.session_state['master_data']['EMPID'] == target_id, 'Intervention_Status'] = 'Completed'
-                    
-                    # 2. HIGH SPEED DISK PERSISTENCE: Write back directly to the optimized CSV Cache layer file
-                    st.session_state['master_data'].to_csv('SIP Data final_active_cache.csv', index=False)
-                    
-                    # 3. Stage notification text securely inside session memory to survive the incoming page reload
-                    st.session_state['last_submission_alert'] = f"Form Logged! Employee {target_id} marked as 'Completed' and successfully moved out of task queue. Attrition risk score {change_msg} (Moved from {base_pct:.1f}% to {adjusted_risk:.1f}%)."
-                    
-                    # 4. Clean up pointer indexes and redirect back smoothly
+            col_back, _ = st.columns([2.0, 3.0])
+            with col_back:
+                if st.button("Return to ER Manager Portal Workspace"):
+                    st.session_state[f"success_banner_{target_id}"] = None
                     st.session_state['remarks_empid'] = None
                     st.session_state['current_page'] = "ER Manager Portal"
                     st.rerun()
         else:
-            st.error("Error matching requested employee references.")
+            emp_records = df[df['EMPID'] == target_id]
+            
+            if not emp_records.empty:
+                emp_data = emp_records.iloc[0]
+                base_pct = emp_data['Attrition_Risk_Percentage']
+                base_tier = emp_data['Risk_Level']
+                
+                st.subheader(f"Questionnaire for EMPID: {target_id}")
+                st.markdown(f"**Context Profile:** {emp_data['MAIN_GROUP']} | **Current Baseline:** <span style='color:red; font-weight:bold;'>{base_pct:.1f}% ({base_tier})</span>", unsafe_allow_html=True)
+                
+                if st.button("Cancel & Return to Dashboard"):
+                    st.session_state['remarks_empid'] = None
+                    st.session_state['current_page'] = "ER Manager Portal"
+                    st.rerun()
+                    
+                st.divider()
+                
+                # REVISED CONFIGURATION: Status option dropdown rendered cleanly ABOVE the form matrix
+                status_selection = st.selectbox("Status", options=["Not Started", "Ongoing", "Completed"], index=2)
+                
+                with st.form("remarks_capture_form"):
+                    st.markdown("##### Score Parameters Matrix")
+                    likert_scales = {1: "Dissatisfied", 2: "Somewhat Dissatisfied", 3: "Neutral", 4: "Somewhat Satisfied", 5: "Satisfied"}
+                    
+                    s_manager = st.radio("Guidance & Support from Manager", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
+                    s_role = st.radio("Experience in the Current Role", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
+                    s_team = st.radio("Team & Workplace Environment", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
+                    s_learning = st.radio("Learning & Training Ecosystem", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
+                    s_growth = st.radio("Career Growth Opportunities", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
+                    
+                    text_comments = st.text_area("Comments", placeholder="Enter any other remarks ...")
+                    
+                    submit_form = st.form_submit_button("Submit")
+                    
+                    if submit_form:
+                        weighted_score = (
+                            (s_manager * 0.30) + 
+                            (s_role * 0.25) + 
+                            (s_team * 0.20) + 
+                            (s_learning * 0.125) + 
+                            (s_growth * 0.125)
+                        )
+                        
+                        if weighted_score >= 4.0:
+                            adjusted_risk = base_pct * 0.60
+                        elif weighted_score >= 3.0:
+                            adjusted_risk = base_pct * 0.85
+                        elif weighted_score >= 2.0:
+                            adjusted_risk = base_pct * 1.10
+                        else:
+                            adjusted_risk = base_pct * 1.25
+                            
+                        adjusted_risk = min(max(adjusted_risk, 0.0), 100.0)
+                        adjusted_tier = classify_revised_risk_tier(adjusted_risk)
+                        
+                        if str(emp_data['GRADE']).strip().upper() in ['ALT', 'CM']:
+                            adjusted_risk = min(adjusted_risk, 50.0)
+                            adjusted_tier = classify_revised_risk_tier(adjusted_risk)
+                        
+                        # Calculating the exact direction and value delta metrics
+                        risk_delta = adjusted_risk - base_pct
+                        if risk_delta < 0:
+                            change_msg = f"decreased by {abs(risk_delta):.2f}%"
+                        elif risk_delta > 0:
+                            change_msg = f"increased by {risk_delta:.2f}%"
+                        else:
+                            change_msg = "remained unchanged by 0.00%"
+                        
+                        # Update session dataset object
+                        st.session_state['master_data'].loc[st.session_state['master_data']['EMPID'] == target_id, 'Attrition_Risk_Percentage'] = adjusted_risk
+                        st.session_state['master_data'].loc[st.session_state['master_data']['EMPID'] == target_id, 'Risk_Level'] = adjusted_tier
+                        st.session_state['master_data'].loc[st.session_state['master_data']['EMPID'] == target_id, 'Intervention_Status'] = status_selection
+                        
+                        # Persist back directly to data cache layer
+                        st.session_state['master_data'].to_csv('SIP Data final_active_cache.csv', index=False)
+                        
+                        # FIXED EXACT OUTPUT NOTIFICATION STRING (EXACT FORMAT MATCHING REQUEST)
+                        st.session_state[f"success_banner_{target_id}"] = f"Feedback submitted and successfully removed from pending queue. The risk percentage of Emp ID {target_id} {change_msg}."
+                        st.rerun()
+            else:
+                st.error("Error matching requested employee references.")
