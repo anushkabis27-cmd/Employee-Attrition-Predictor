@@ -162,7 +162,7 @@ if 'er_authenticated' not in st.session_state: st.session_state['er_authenticate
 # --- 5. SIDEBAR NAVIGATION CONTROLLER ---
 st.sidebar.title("iRETAIN")
 st.sidebar.markdown("---")
-page_options = ["Zone wise turnover prediction", "Employee risk indicator", "ER Manager Portal", "Remarks"]
+page_options = ["Zone wise turnover prediction", "Employee risk indicator", "ER Manager Portal", "Feedback Form"]
 
 if st.session_state['current_page'] in page_options:
     default_index = page_options.index(st.session_state['current_page'])
@@ -398,7 +398,7 @@ elif st.session_state['current_page'] == "ER Manager Portal":
 
 
 # --- PAGE 4: REMARKS INTERVENTION ---
-elif st.session_state['current_page'] == "Remarks":
+elif st.session_state['current_page'] == "Feedback Form":
     st.markdown("<h1 class='centered-title'>Remarks</h1>", unsafe_allow_html=True)
     
     if not st.session_state['remarks_empid']:
@@ -428,13 +428,13 @@ elif st.session_state['current_page'] == "Remarks":
                 st.markdown("##### Score Parameters Matrix Evaluation")
                 likert_scales = {1: "Dissatisfied", 2: "Somewhat Dissatisfied", 3: "Neutral", 4: "Somewhat Satisfied", 5: "Satisfied"}
                 
-                s_manager = st.radio("Guidance & Support from Manager", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
-                s_role = st.radio("Experience in the Current Role", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
+                s_guidance = st.radio("Guidance & Support from Manager", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
+                s_experience = st.radio("Experience in the Current Role", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
                 s_team = st.radio("Team & Workplace Environment", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
                 s_learning = st.radio("Learning & Training Ecosystem", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
-                s_growth = st.radio("Career Growth Opportunities", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
+                s_career = st.radio("Career Growth Opportunities", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
                 
-                text_comments = st.text_area("Official Resolution Strategy Comments", placeholder="Enter notes or structural modifications agreed on...")
+                text_comments = st.text_area("Remarks", placeholder="Enter notes or structural modifications agreed on...")
                 
                 submit_form = st.form_submit_button("Submit Form & Conclude Task")
                 
