@@ -10,13 +10,15 @@ from email.mime.text import MIMEText
 # --- 1. CONFIGURATION ---
 st.set_page_config(page_title="iRetain | Workforce Analytics", layout="wide")
 
-# --- 2. REFINED PROFESSIONAL UI CSS WITH BLOCK-LEVEL SIDEBAR ---
+# --- 2. REFINED PROFESSIONAL UI CSS WITH MINIMALIST SIDEBAR ---
 st.markdown("""
+    <link rel='stylesheet' href='https://fonts.googleapis.com/css2?family=Mulish:wght@600;700&display=swap'>
+
     <style>
     .main { background-color: #FFFFFF; color: #333333; }
     [data-testid="stSidebar"] { background-color: #f37021; }
-    [data-testid="stSidebar"] .st-emotion-cache-10trblm { color: white; }
     
+    /* Document Header Styling */
     .centered-title { text-align: center; color: #003366; font-family: 'Segoe UI', Arial; font-weight: bold; margin-bottom: 20px; }
     .section-header { color: #000000; font-weight: bold; font-size: 20px; margin-bottom: 15px; }
 
@@ -35,41 +37,79 @@ st.markdown("""
     .report-card { background: #FFFFFF; padding: 25px; border-radius: 15px; border-left: 5px solid #f37021;
                    border-top: 1px solid #EEE; border-right: 1px solid #EEE; border-bottom: 1px solid #EEE; margin-bottom: 20px; }
 
-    /* Button Styling */
+    /* Standard Core App Button Layouts */
     div.stButton > button { background-color: #f37021 !important; color: white !important; border-radius: 4px; border: none; width: 100%; font-weight: 600; }
     .large-btn-container div.stButton > button { padding: 15px 10px !important; font-size: 18px !important; height: 60px !important; }
     .small-btn-container div.stButton > button { padding: 5px !important; font-size: 13px !important; height: auto !important; margin-bottom: 8px; }
     
     .chart-container { padding: 5px; }
 
-    /* BLOCK LEVEL LINK OVERRIDES FOR SIDEBAR MENU ROWS */
+    /* =========================================================================
+       CLEAN, MODERN SIDEBAR OVERRIDES: MULISH SEMIBOLD & BLACK TEXT INDEXING
+       ========================================================================= */
+    
+    /* Set Sidebar Title to look cohesive */
+    [data-testid="stSidebar"] h1 {
+        font-family: 'Mulish', sans-serif !important;
+        font-weight: 700 !important;
+        color: #000000 !important;
+    }
+
+    /* Target the container form block wrapper */
     [data-testid="stSidebar"] [data-testid="stWidgetFormWrapper"] {
         width: 100%;
     }
+    
+    /* Set up structural layout for the radio items group */
     [data-testid="stSidebar"] div[role="radiogroup"] {
         display: flex;
         flex-direction: column;
         width: 100%;
-        gap: 2px;
+        gap: 0px !important; /* Stripped gap spacings to support a compact design */
     }
+    
+    /* transform the labels completely into full-width row panels with no button styling */
     [data-testid="stSidebar"] div[role="radiogroup"] label {
         display: block !important;
         width: 100% !important;
-        padding: 10px 15px !important;
-        margin: 0 !important;
-        border-radius: 4px;
-        transition: background-color 0.2s ease;
+        padding: 6px 16px !important; /* Tight padding variables for a premium presentation */
+        margin: 0px !important;
+        background-color: transparent !important; /* Statically cleared all background colors */
+        border: none !important; /* Removed borders and bounding box outlines */
+        border-radius: 0px !important; /* Cleared rounded card corners */
+        box-shadow: none !important; /* Removed shadow decorations */
         cursor: pointer !important;
+        transition: background-color 0.15s ease-in-out;
     }
-    /* Hover state for entire item row block */
+    
+    /* Set Typography constraints to Mulish SemiBold and True Black */
+    [data-testid="stSidebar"] div[role="radiogroup"] label div[data-testid="stMarkdownContainer"] p {
+        font-family: 'Mulish', sans-serif !important;
+        font-weight: 600 !important; /* Force Mulish SemiBold parameter weights */
+        color: #000000 !important;   /* Force clean black typography colors */
+        font-size: 15px !important;
+        margin: 0px !important;
+        padding: 0px !important;
+    }
+
+    /* Minimalist Row Hover: light semi-transparent shade backdrop overlay */
     [data-testid="stSidebar"] div[role="radiogroup"] label:hover {
-        background-color: rgba(255, 255, 255, 0.15);
+        background-color: rgba(255, 255, 255, 0.12) !important;
     }
-    /* Selected state item row highlight */
+    
+    /* Active Selected Menu Page Item Indicator */
     [data-testid="stSidebar"] div[role="radiogroup"] label[data-checked="true"] {
-        background-color: rgba(255, 255, 255, 0.25);
+        background-color: rgba(0, 0, 0, 0.08) !important; /* Dark overlay anchor tint for selection distinction */
+        border-left: 4px solid #000000 !important; /* Minimal left border accent line marking active focus */
+        padding-left: 12px !important; /* Offset padding adjustment to preserve absolute line alignments */
     }
-    /* Ensure the internal text flows correctly without input margins forcing gaps */
+    
+    /* Hide native radio input circles from view completely */
+    [data-testid="stSidebar"] div[role="radiogroup"] label div[data-testid="stBlock"] {
+        display: none !important;
+    }
+    
+    /* Ensure markdown container wraps cleanly to prevent padding breaks */
     [data-testid="stSidebar"] div[role="radiogroup"] label div[data-testid="stMarkdownContainer"] {
         width: 100%;
     }
