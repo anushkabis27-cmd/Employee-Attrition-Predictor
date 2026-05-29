@@ -41,7 +41,7 @@ st.markdown("""
     
     .chart-container { padding: 5px; }
 
-    /* CLEAN, MODERN SIDEBAR OVERRIDES */
+    /* SIDEBAR OVERRIDES */
     [data-testid="stSidebar"] h1 {
         font-family: 'Mulish', sans-serif !important;
         font-weight: 700 !important;
@@ -104,12 +104,6 @@ st.markdown("""
 
 # --- 3. RECALIBRATED BRACKET CLASSIFICATION ENGINE ---
 def classify_revised_risk_tier(score):
-    """
-    Evaluates continuous risk scores using the updated segmentation brackets:
-    - Low Risk: 0% to 20%
-    - Medium Risk: 21% to 50%
-    - High Risk: 51% to 100%
-    """
     if score <= 20.0:
         return 'Low'
     elif score <= 50.0:
@@ -121,12 +115,21 @@ def run_portfolio_trigger_check(df, manager_id):
     manager_portfolio = df[df['ER manager ID'] == manager_id]
     if len(manager_portfolio) == 0:
         return
-    avg_portfolio_risk = manager_portfolio['Attrition_Risk_Percentage'].mean()
-    if avg_portfolio_risk > 45.0: 
-        st.warning(f"System Trigger Notification Issued: ER Manager portfolio average risk is {avg_portfolio_risk:.1f}%. ER Manager must intervene immediately.")
+        
+    total_count = len(manager_portfolio)
+    active_high_risk = len(manager_portfolio[
+        (manager_portfolio['Risk_Level'] == 'High') & 
+        (manager_portfolio['Intervention_Status'] != 'Completed')
+    ])
+    
+    high_risk_share = (active_high_risk / total_count * 100) if total_count > 0 else 0
+    
+    # SYSTEM TRIGGER: Checked and flagged if the share of pending high risk cases exceeds 10%
+    if high_risk_share > 10.0: 
+        st.warning(f"🚨 System Trigger Notification Issued: Your portfolio pending High Risk share is {high_risk_share:.1f}% (exceeding the 10% organizational limit). ER Manager must intervene immediately.")
 
 
-# --- 4. DATA LOADING ENGINE (UPDATED FOR DIRECT EXCEL FILE ACCESS) ---
+# --- 4. DATA LOADING ENGINE ---
 @st.cache_data
 def load_base_data():
     file_path = 'SIP Data final.xlsx'
@@ -135,10 +138,8 @@ def load_base_data():
         st.stop()
     
     try:
-        # Load directly from the Master Attrition Data worksheet
         df = pd.read_excel(file_path, sheet_name='Master Attrition Data')
     except Exception:
-        # Fallback to the first worksheet if sheet name matches are customized
         df = pd.read_excel(file_path, sheet_name=0)
         
     df.columns = df.columns.str.strip()
@@ -162,7 +163,7 @@ if 'er_authenticated' not in st.session_state: st.session_state['er_authenticate
 # --- 5. SIDEBAR NAVIGATION CONTROLLER ---
 st.sidebar.title("iRETAIN")
 st.sidebar.markdown("---")
-page_options = ["Zone wise turnover prediction", "Employee risk indicator", "ER Manager Portal", "Feedback Form"]
+page_options = ["Zone wise turnover prediction", "Employee risk indicator", "ER Manager Portal", "Remarks"]
 
 if st.session_state['current_page'] in page_options:
     default_index = page_options.index(st.session_state['current_page'])
@@ -281,9 +282,9 @@ elif st.session_state['current_page'] == "Employee risk indicator":
             with col_a:
                 st.markdown("<div class='report-card'><h4>Risk Factor Analysis</h4>", unsafe_allow_html=True)
                 if row['GRADE'] in ['ALT', 'CM']:
-                    st.write("• Highly stable organizational anchor profile")
+                    st.write("• Highly stable organizational anchor profile.")
                 if 3.0 <= tenure <= 5.0:
-                    st.write("• Tenure falls in primary risk  of 3-5 Year bracket .")
+                    st.write("• Tenure falls in primary risk of 3-5 Year bracket.")
                 if 25 <= row['AGE'] <= 29:
                     st.write("• Volatile Age Group of 25-29 years.")
                 if row.get('Distance From Home (KM)', 0) > 800:
@@ -294,14 +295,16 @@ elif st.session_state['current_page'] == "Employee risk indicator":
                 st.markdown(f"<div class='report-card' style='border-left-color: {h_color};'><h4>Mitigation Actionables</h4>", unsafe_allow_html=True)
                 if row.get('Intervention_Status', 'Not started') == 'Completed':
                     st.write("• **Intervention Concluded:** Feedback form logged successfully.")
-
-            # FEATURE EXPANSION TRACK: Comprehensive corporate actionables for high risk segments
+                
+                # REVISED HIGH RISK MITIGATION TRACK
                 elif level == 'High':
                     st.write("• **Urgent Action Needed:** Immediate 1:1 session with ER Manager.")
-                    st.write("• Discuss career aspirations & growth expectations within the organization.")
+                    st.write("• Discuss career aspirations & growth expectations within organization.")
+                    st.write("• Map short-term milestones, internal recognition hooks, and upskilling goals.")
+                    st.write("• Explore structural paths like branch transfers or flexible arrangements to handle travel strain.")
+                
                 elif level == 'Medium':
                     st.write("• Engage in career path alignment discussions.")
-                
                 else: 
                     st.write("• Maintain standard contact & regular checkins.")
                 st.markdown("</div>", unsafe_allow_html=True)
@@ -346,11 +349,11 @@ elif st.session_state['current_page'] == "ER Manager Portal":
         active_id = st.session_state['current_manager_id']
         manager_df = df[df['ER manager ID'] == active_id]
         
+        # Runs check based on active pending case weight limits
         run_portfolio_trigger_check(df, active_id)
 
         total_employees_mapped = len(manager_df)
         
-        # EXCLUSION HOOK: Hide completed tasks instantly from active high risk lists
         mapped_high_risk_df = manager_df[
             (manager_df['Risk_Level'] == 'High') & 
             (manager_df['Intervention_Status'] != 'Completed')
@@ -363,7 +366,7 @@ elif st.session_state['current_page'] == "ER Manager Portal":
         m1, m2, m3 = st.columns(3)
         with m1: st.markdown(f"<div class='metric-container'><div class='metric-label'>Total Mapped Employees</div><div class='metric-value'>{total_employees_mapped}</div></div>", unsafe_allow_html=True)
         with m2: st.markdown(f"<div class='metric-container'><div class='metric-label'>High Risk Employees</div><div class='metric-value'>{high_risk_employees}</div></div>", unsafe_allow_html=True)
-        with m3: st.markdown(f"<div class='metric-container'><div class='metric-label'>High Risk (%)</div><div class='metric-value'>{high_risk_pct:.1f}%</div></div>", unsafe_allow_html=True)
+        with m3: st.markdown(f"<div class='metric-container'><div class='metric-label'>High Risk Share (%)</div><div class='metric-value'>{high_risk_pct:.1f}%</div></div>", unsafe_allow_html=True)
 
         st.divider()
         st.write("#### Active Pending Actionables")
@@ -402,7 +405,7 @@ elif st.session_state['current_page'] == "Feedback Form":
     st.markdown("<h1 class='centered-title'>Remarks</h1>", unsafe_allow_html=True)
     
     if not st.session_state['remarks_empid']:
-        st.info("Please select an employee inside the ER Manager Portal to open the evaluation matrix.")
+        st.info("Please select an employee ID inside the ER Manager Portal to open the evaluation matrix.")
         if st.button("Go to ER Portal"):
             st.session_state['current_page'] = "ER Manager Portal"
             st.rerun()
@@ -425,21 +428,21 @@ elif st.session_state['current_page'] == "Feedback Form":
             st.divider()
             
             with st.form("remarks_capture_form"):
-                st.markdown("##### Score Parameters Matrix Evaluation")
+                st.markdown("##### Score Parameters Matrix")
                 likert_scales = {1: "Dissatisfied", 2: "Somewhat Dissatisfied", 3: "Neutral", 4: "Somewhat Satisfied", 5: "Satisfied"}
                 
-                s_guidance = st.radio("Guidance & Support from Manager", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
-                s_experience = st.radio("Experience in the Current Role", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
+                s_manager = st.radio("Guidance & Support from Manager", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
+                s_role = st.radio("Experience in the Current Role", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
                 s_team = st.radio("Team & Workplace Environment", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
                 s_learning = st.radio("Learning & Training Ecosystem", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
-                s_career = st.radio("Career Growth Opportunities", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
+                s_growth = st.radio("Career Growth Opportunities", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
                 
-                text_comments = st.text_area("Remarks", placeholder="Enter notes or structural modifications agreed on...")
+                text_comments = st.text_area("Comments", placeholder="Enter any other remarks ...")
                 
-                submit_form = st.form_submit_button("Submit Form & Conclude Task")
+                # BUTTON NAME REVISED TO "Submit"
+                submit_form = st.form_submit_button("Submit")
                 
                 if submit_form:
-                    # Calculate overall questionnaire performance scale
                     weighted_score = (
                         (s_manager * 0.30) + 
                         (s_role * 0.25) + 
@@ -448,45 +451,44 @@ elif st.session_state['current_page'] == "Feedback Form":
                         (s_growth * 0.125)
                     )
                     
-                    # DYNAMIC MODIFIER CORE ENGINE: Automatically increase or decrease risk score
                     if weighted_score >= 4.0:
-                        adjusted_risk = base_pct * 0.60  # Risk drops due to high satisfaction parameters
-                        change_msg = "decreased substantially due to positive feedback indicators"
+                        adjusted_risk = base_pct * 0.60
                     elif weighted_score >= 3.0:
-                        adjusted_risk = base_pct * 0.85  # Risk drops slightly due to acceptable satisfaction feedback
-                        change_msg = "decreased slightly due to acceptable satisfaction feedback"
+                        adjusted_risk = base_pct * 0.85
                     elif weighted_score >= 2.0:
-                        adjusted_risk = base_pct * 1.10  # Risk increases due to structural dissatisfaction parameters
-                        change_msg = "increased slightly due to low employee feedback scores"
+                        adjusted_risk = base_pct * 1.10
                     else:
-                        adjusted_risk = base_pct * 1.25  # Risk increases significantly due to severe distress
-                        change_msg = "increased significantly due to critical dissatisfaction signals"
+                        adjusted_risk = base_pct * 1.25
                         
                     adjusted_risk = min(max(adjusted_risk, 0.0), 100.0)
                     adjusted_tier = classify_revised_risk_tier(adjusted_risk)
                     
-                    # Executive anchor hard-caps configuration
                     if str(emp_data['GRADE']).strip().upper() in ['ALT', 'CM']:
                         adjusted_risk = min(adjusted_risk, 50.0)
                         adjusted_tier = classify_revised_risk_tier(adjusted_risk)
                     
-                    # Apply changes instantly to session metrics
+                    # CALCULATING THE EXACT DELTA AMOUNT
+                    risk_delta = adjusted_risk - base_pct
+                    if risk_delta < 0:
+                        change_msg = f"decreased by {abs(risk_delta):.2f}%"
+                    elif risk_delta > 0:
+                        change_msg = f"increased by {risk_delta:.2f}%"
+                    else:
+                        change_msg = "remained unchanged"
+                    
                     st.session_state['master_data'].loc[st.session_state['master_data']['EMPID'] == target_id, 'Attrition_Risk_Percentage'] = adjusted_risk
                     st.session_state['master_data'].loc[st.session_state['master_data']['EMPID'] == target_id, 'Risk_Level'] = adjusted_tier
                     st.session_state['master_data'].loc[st.session_state['master_data']['EMPID'] == target_id, 'Intervention_Status'] = 'Completed'
                     
-                    # PERSISTENCE ENGINE: Write back directly to the local Excel sheet target on disk
                     try:
-                        # Saves safely back to the correct worksheet in your workbook
                         with pd.ExcelWriter('SIP Data final.xlsx', engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
                             st.session_state['master_data'].to_excel(writer, sheet_name='Master Attrition Data', index=False)
                     except Exception:
-                        # Standard overwrite if workbook writing layers are protected
                         st.session_state['master_data'].to_excel('SIP Data final.xlsx', index=False)
                     
-                    st.success(f"Form Logged! Employee {target_id} marked as 'Completed' and successfully removed from tracking queues. Risk score {change_msg} (Moved from {base_pct:.1f}% to {adjusted_risk:.1f}%).")
+                    # REVISED SHIFT MESSAGE FEEDBACK
+                    st.success(f"Form Logged! Employee {target_id} marked as 'Completed' and succesfully moved out of task queue. Risk score {change_msg} (Moved from {base_pct:.1f}% to {adjusted_risk:.1f}%).")
                     
-                    # Clean up memory index states and reroute back home smoothly
                     st.session_state['remarks_empid'] = None
                     st.session_state['current_page'] = "ER Manager Portal"
                     st.rerun()
