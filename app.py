@@ -105,7 +105,7 @@ st.markdown("""
 # --- 3. RECALIBRATED BRACKET CLASSIFICATION ENGINE ---
 def classify_revised_risk_tier(score):
     """
-    Evaluates continuous risk scores using the newly updated segmentation brackets:
+    Evaluates continuous risk scores using the updated segmentation brackets:
     - Low Risk: 0% to 20%
     - Medium Risk: 21% to 50%
     - High Risk: 51% to 100%
@@ -129,8 +129,8 @@ def run_portfolio_trigger_check(df, manager_id):
 # --- 4. DATA LOADING ENGINE ---
 @st.cache_data
 def load_base_data():
-    # Pointing explicitly to the correct master data file asset
-    file_path = 'SIP Data final.xlsb.xlsx'
+    # Explicit connection to the 20,000 record final master csv source
+    file_path = 'SIP Data final.xlsb.xlsx - Master Attrition Data.csv'
     if not os.path.exists(file_path):
         st.error(f"Required database asset '{file_path}' could not be loaded safely.")
         st.stop()
@@ -341,7 +341,7 @@ elif st.session_state['current_page'] == "ER Manager Portal":
 
         mapped_total = len(manager_df)
         
-        # FEATURE INTEGRATION: Exclude cases flagged as 'Completed' from active queues
+        # EXCLUSION HOOK: Hide completed tasks instantly from active queues
         mapped_high_risk_df = manager_df[
             (manager_df['Risk_Level'] == 'High') & 
             (manager_df['Intervention_Status'] != 'Completed')
@@ -439,12 +439,12 @@ elif st.session_state['current_page'] == "Remarks":
                         (s_growth * 0.125)
                     )
                     
-                    # FEATURE AUTOMATION ENGINE: Automatically increase or decrease risk score
+                    # DYNAMIC MODIFIER CORE ENGINE: Automatically increase or decrease risk score
                     if weighted_score >= 4.0:
                         adjusted_risk = base_pct * 0.60  # Risk decreases due to high satisfaction
                         change_msg = "decreased substantially due to positive feedback indicators"
                     elif weighted_score >= 3.0:
-                        adjusted_risk = base_pct * 0.85  # Risk decreases slightly due to neutral-positive stability
+                        adjusted_risk = base_pct * 0.85  # Risk decreases slightly due to neutral stability
                         change_msg = "decreased slightly due to acceptable satisfaction feedback"
                     elif weighted_score >= 2.0:
                         adjusted_risk = base_pct * 1.10  # Risk increases slightly due to passive dissatisfaction
@@ -456,22 +456,22 @@ elif st.session_state['current_page'] == "Remarks":
                     adjusted_risk = min(max(adjusted_risk, 0.0), 100.0)
                     adjusted_tier = classify_revised_risk_tier(adjusted_risk)
                     
-                    # Hard-caps stay protected
+                    # Executive hard-caps protection
                     if str(emp_data['GRADE']).strip().upper() in ['ALT', 'CM']:
                         adjusted_risk = min(adjusted_risk, 50.0)
                         adjusted_tier = classify_revised_risk_tier(adjusted_risk)
                     
-                    # Update parameters inside session states
+                    # Apply changes instantly to session metrics
                     st.session_state['master_data'].loc[st.session_state['master_data']['EMPID'] == target_id, 'Attrition_Risk_Percentage'] = adjusted_risk
                     st.session_state['master_data'].loc[st.session_state['master_data']['EMPID'] == target_id, 'Risk_Level'] = adjusted_tier
                     st.session_state['master_data'].loc[st.session_state['master_data']['EMPID'] == target_id, 'Intervention_Status'] = 'Completed'
                     
-                    # PERMANENT PERSISTENCE EXPORT: Write immediately back to local source storage file
+                    # PERSISTENCE ENGINE: Write back directly to disk storage file
                     st.session_state['master_data'].to_csv('SIP Data final.xlsb.xlsx - Master Attrition Data.csv', index=False)
                     
                     st.success(f"Form Logged! Employee {target_id} marked as 'Completed' and successfully removed from tracking queues. Risk score {change_msg} (Moved from {base_pct:.1f}% to {adjusted_risk:.1f}%).")
                     
-                    # Reset memory indexes and reroute cleanly
+                    # Clean up memory index states and reroute back home smoothly
                     st.session_state['remarks_empid'] = None
                     st.session_state['current_page'] = "ER Manager Portal"
                     st.rerun()
