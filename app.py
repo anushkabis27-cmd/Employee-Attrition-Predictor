@@ -126,13 +126,13 @@ def run_portfolio_trigger_check(df, manager_id):
         st.warning(f"System Trigger Notification Issued: ER Manager portfolio average risk is {avg_portfolio_risk:.1f}%. ER Manager must intervene immediately.")
 
 
-# --- 4. DATA LOADING ENGINE (UPDATED FILENAME) ---
+# --- 4. DATA LOADING ENGINE ---
 @st.cache_data
 def load_base_data():
-    # Mentioning the correct updated dataset filename here
+    # Pointing explicitly to the correct master data file asset
     file_path = 'SIP Data final.xlsb.xlsx - Master Attrition Data.csv'
     if not os.path.exists(file_path):
-        st.error(f"Required database spreading asset '{file_path}' could not be loaded safely.")
+        st.error(f"Required database asset '{file_path}' could not be loaded safely.")
         st.stop()
     
     df = pd.read_csv(file_path)
@@ -280,22 +280,21 @@ elif st.session_state['current_page'] == "Employee risk indicator":
                 if 3.0 <= tenure <= 5.0:
                     st.write("• Primary risk segment for employee resignations (3-5 Year bracket vulnerability).")
                 if 25 <= row['AGE'] <= 29:
-                    st.write("• Highly volatile mobile age demographic bracket (25-29 years).")
+                    st.write("• Volatile early career age group profiling.")
                 if row.get('Distance From Home (KM)', 0) > 800:
-                    st.write("• Severe geographic displacement: Personnel is placed over 800 KM from home station.")
+                    st.write("• High geographic distance stress found (>800 KM from home).")
                 st.markdown("</div>", unsafe_allow_html=True)
             
             with col_b:
                 st.markdown(f"<div class='report-card' style='border-left-color: {h_color};'><h4>Mitigation Actionables</h4>", unsafe_allow_html=True)
                 if row.get('Intervention_Status', 'Not started') == 'Completed':
-                    st.write("• **Intervention Logged:** Corporate retention form has been filled. Employee monitor loop activated.")
+                    st.write("• **Intervention Concluded:** Corporate retention talk logged successfully. Monitor loop asset running.")
                 elif level == 'High': 
-                    st.write("• **Urgent Intervention Required:** Schedule dynamic corporate retention talk within 24 hours.")
-                    st.write("• Evaluate localized structural modifications or branch transfers to mitigate family isolation.")
+                    st.write("• **Urgent Action Needed:** Form context demands an immediate retention dialogue session.")
                 elif level == 'Medium':
-                    st.write("• Open preventative dialogue frameworks to address milestone career adjustments.")
+                    st.write("• Engage preventive career path alignment discussions.")
                 else: 
-                    st.write("• Maintain standardized performance recognition loops.")
+                    st.write("• Maintain standard recognition loops.")
                 st.markdown("</div>", unsafe_allow_html=True)
 
             st.divider()
@@ -342,7 +341,7 @@ elif st.session_state['current_page'] == "ER Manager Portal":
 
         mapped_total = len(manager_df)
         
-        # FEATURE INTEGRATION: Exclude 'Completed' cases from the high-risk tracking task views
+        # FEATURE INTEGRATION: Exclude cases flagged as 'Completed' from active queues
         mapped_high_risk_df = manager_df[
             (manager_df['Risk_Level'] == 'High') & 
             (manager_df['Intervention_Status'] != 'Completed')
@@ -351,14 +350,14 @@ elif st.session_state['current_page'] == "ER Manager Portal":
         mapped_high_risk_count = len(mapped_high_risk_df)
         mapped_high_risk_pct = (mapped_high_risk_count / mapped_total * 100) if mapped_total > 0 else 0
         
-        st.markdown("<div class='section-header'>Portfolio High Risk Tasking Queue (Action Required)</div>", unsafe_allow_html=True)
+        st.markdown("<div class='section-header'>Portfolio Tasking Queue (Action Required)</div>", unsafe_allow_html=True)
         m1, m2, m3 = st.columns(3)
         with m1: st.markdown(f"<div class='metric-container'><div class='metric-label'>Total Map Base</div><div class='metric-value'>{mapped_total}</div></div>", unsafe_allow_html=True)
-        with m2: st.markdown(f"<div class='metric-container'><div class='metric-label'>Pending High Risk cases</div><div class='metric-value'>{mapped_high_risk_count}</div></div>", unsafe_allow_html=True)
-        with m3: st.markdown(f"<div class='metric-container'><div class='metric-label'>Portfolio High Risk (%)</div><div class='metric-value'>{mapped_high_risk_pct:.1f}%</div></div>", unsafe_allow_html=True)
+        with m2: st.markdown(f"<div class='metric-container'><div class='metric-label'>Pending Action Cases</div><div class='metric-value'>{mapped_high_risk_count}</div></div>", unsafe_allow_html=True)
+        with m3: st.markdown(f"<div class='metric-container'><div class='metric-label'>High Risk Share</div><div class='metric-value'>{mapped_high_risk_pct:.1f}%</div></div>", unsafe_allow_html=True)
 
         st.divider()
-        st.write("#### Active High Risk Attention Items")
+        st.write("#### Active Pending Attention Items")
         
         if not mapped_high_risk_df.empty:
             h_cols_hr = st.columns([1, 2, 1, 1, 1.2])
@@ -386,15 +385,15 @@ elif st.session_state['current_page'] == "ER Manager Portal":
                     st.session_state['current_page'] = "Remarks"
                     st.rerun()
         else:
-            st.success("Excellent! No high-risk pending employee interventions remain in your queue.")
+            st.success("No high-risk pending employee interventions remain in your active work list.")
 
 
 # --- PAGE 4: REMARKS INTERVENTION ---
 elif st.session_state['current_page'] == "Remarks":
-    st.markdown("<h1 class='centered-title'>Form Submission & Remarks Interface</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 class='centered-title'>Intervention Remarks Form Desk</h1>", unsafe_allow_html=True)
     
     if not st.session_state['remarks_empid']:
-        st.info("Please select an employee inside the ER Manager Portal to load the intervention desk.")
+        st.info("Please select an employee inside the ER Manager Portal to open the evaluation matrix.")
         if st.button("Go to ER Portal"):
             st.session_state['current_page'] = "ER Manager Portal"
             st.rerun()
@@ -417,21 +416,21 @@ elif st.session_state['current_page'] == "Remarks":
             st.divider()
             
             with st.form("remarks_capture_form"):
-                st.markdown("##### Parameter Metrics Evaluation")
+                st.markdown("##### Score Parameters Matrix Evaluation")
                 likert_scales = {1: "Dissatisfied", 2: "Somewhat Dissatisfied", 3: "Neutral", 4: "Somewhat Satisfied", 5: "Satisfied"}
                 
                 s_manager = st.radio("Manager Support", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
                 s_role = st.radio("Role Assignment Fit", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
-                s_team = st.radio("Team & Workplace Relationships", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
+                s_team = st.radio("Team & Workplace Environment", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
                 s_learning = st.radio("Learning & Training Ecosystem", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
-                s_growth = st.radio("Career Growth Opportunities", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
+                s_growth = st.radio("Career Advancement Levers", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
                 
-                text_comments = st.text_area("Official ER Manager Notes", placeholder="Input critical insights or operational resolution agreements from conversation...")
+                text_comments = st.text_area("Official Resolution Strategy Comments", placeholder="Enter notes or structural modifications agreed on...")
                 
-                submit_form = st.form_submit_button("Submit Form & Flag Completed")
+                submit_form = st.form_submit_button("Submit Form & Conclude Task")
                 
                 if submit_form:
-                    # Calculate structured satisfaction weight index
+                    # Calculate overall questionnaire performance scale
                     weighted_score = (
                         (s_manager * 0.30) + 
                         (s_role * 0.25) + 
@@ -440,31 +439,39 @@ elif st.session_state['current_page'] == "Remarks":
                         (s_growth * 0.125)
                     )
                     
-                    # AUTOMATED FORM FEATURE INTEGRATION:
-                    # Direct form submission calculates the risk mitigation modifiers automatically
+                    # FEATURE AUTOMATION ENGINE: Automatically increase or decrease risk score
                     if weighted_score >= 4.0:
-                        adjusted_risk = base_pct * 0.35  # Significant mitigation (65% drop)
-                    elif weighted_score >= 2.8:
-                        adjusted_risk = base_pct * 0.60  # Moderate mitigation (40% drop)
+                        adjusted_risk = base_pct * 0.60  # Risk decreases due to high satisfaction
+                        change_msg = "decreased substantially due to positive feedback indicators"
+                    elif weighted_score >= 3.0:
+                        adjusted_risk = base_pct * 0.85  # Risk decreases slightly due to neutral-positive stability
+                        change_msg = "decreased slightly due to acceptable satisfaction feedback"
+                    elif weighted_score >= 2.0:
+                        adjusted_risk = base_pct * 1.10  # Risk increases slightly due to passive dissatisfaction
+                        change_msg = "increased slightly due to low employee feedback scores"
                     else:
-                        adjusted_risk = base_pct * 0.85  # Low mitigation (15% drop)
+                        adjusted_risk = base_pct * 1.25  # Risk increases significantly due to severe distress
+                        change_msg = "increased significantly due to critical dissatisfaction signals"
                         
                     adjusted_risk = min(max(adjusted_risk, 0.0), 100.0)
                     adjusted_tier = classify_revised_risk_tier(adjusted_risk)
                     
-                    # Strategic executive hard-caps stay integrated
+                    # Hard-caps stay protected
                     if str(emp_data['GRADE']).strip().upper() in ['ALT', 'CM']:
                         adjusted_risk = min(adjusted_risk, 50.0)
                         adjusted_tier = classify_revised_risk_tier(adjusted_risk)
                     
-                    # Update parameters directly inside memory data structure
+                    # Update parameters inside session states
                     st.session_state['master_data'].loc[st.session_state['master_data']['EMPID'] == target_id, 'Attrition_Risk_Percentage'] = adjusted_risk
                     st.session_state['master_data'].loc[st.session_state['master_data']['EMPID'] == target_id, 'Risk_Level'] = adjusted_tier
                     st.session_state['master_data'].loc[st.session_state['master_data']['EMPID'] == target_id, 'Intervention_Status'] = 'Completed'
                     
-                    st.success(f"Success! Form submitted. Employee {target_id} has been marked as 'Completed' and safely removed from active risk queues. Attrition risk shifted from {base_pct:.1f}% to {adjusted_risk:.1f}% ({adjusted_tier}).")
+                    # PERMANENT PERSISTENCE EXPORT: Write immediately back to local source storage file
+                    st.session_state['master_data'].to_csv('SIP Data final.xlsb.xlsx - Master Attrition Data.csv', index=False)
                     
-                    # Reset variables and navigate back smoothly
+                    st.success(f"Form Logged! Employee {target_id} marked as 'Completed' and successfully removed from tracking queues. Risk score {change_msg} (Moved from {base_pct:.1f}% to {adjusted_risk:.1f}%).")
+                    
+                    # Reset memory indexes and reroute cleanly
                     st.session_state['remarks_empid'] = None
                     st.session_state['current_page'] = "ER Manager Portal"
                     st.rerun()
