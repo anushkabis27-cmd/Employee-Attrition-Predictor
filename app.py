@@ -281,25 +281,29 @@ elif st.session_state['current_page'] == "Employee risk indicator":
             with col_a:
                 st.markdown("<div class='report-card'><h4>Risk Factor Analysis</h4>", unsafe_allow_html=True)
                 if row['GRADE'] in ['ALT', 'CM']:
-                    st.write("• Highly stable organizational anchor profile. Capped strictly at Medium risk maximums.")
+                    st.write("• Highly stable organizational anchor profile")
                 if 3.0 <= tenure <= 5.0:
-                    st.write("• Primary risk segment for employee resignations (3-5 Year bracket vulnerability).")
+                    st.write("• Tenure falls in primary risk  of 3-5 Year bracket .")
                 if 25 <= row['AGE'] <= 29:
-                    st.write("• Volatile early career age group profiling.")
+                    st.write("• Volatile Age Group of 25-29 years.")
                 if row.get('Distance From Home (KM)', 0) > 800:
-                    st.write("• High geographic distance stress found (>800 KM from home).")
+                    st.write("• High geographic distance from Home (>800 KM from home).")
                 st.markdown("</div>", unsafe_allow_html=True)
             
             with col_b:
                 st.markdown(f"<div class='report-card' style='border-left-color: {h_color};'><h4>Mitigation Actionables</h4>", unsafe_allow_html=True)
                 if row.get('Intervention_Status', 'Not started') == 'Completed':
-                    st.write("• **Intervention Concluded:** Corporate retention talk logged successfully.")
-                elif level == 'High': 
-                    st.write("• **Urgent Action Needed:** Form context demands an immediate retention dialogue session.")
+                    st.write("• **Intervention Concluded:** Feedback form logged successfully.")
+
+            # FEATURE EXPANSION TRACK: Comprehensive corporate actionables for high risk segments
+                elif level == 'High':
+                    st.write("• **Urgent Action Needed:** Immediate 1:1 session with ER Manager.")
+                    st.write("• Discuss career aspirations & growth expectations within the organization.")
                 elif level == 'Medium':
-                    st.write("• Engage preventive career path alignment discussions.")
+                    st.write("• Engage in career path alignment discussions.")
+                
                 else: 
-                    st.write("• Maintain standard recognition loops.")
+                    st.write("• Maintain standard contact & regular checkins.")
                 st.markdown("</div>", unsafe_allow_html=True)
 
             st.divider()
@@ -344,7 +348,7 @@ elif st.session_state['current_page'] == "ER Manager Portal":
         
         run_portfolio_trigger_check(df, active_id)
 
-        mapped_total = len(manager_df)
+        total_employees_mapped = len(manager_df)
         
         # EXCLUSION HOOK: Hide completed tasks instantly from active high risk lists
         mapped_high_risk_df = manager_df[
@@ -352,17 +356,17 @@ elif st.session_state['current_page'] == "ER Manager Portal":
             (manager_df['Intervention_Status'] != 'Completed')
         ].sort_values(by='Attrition_Risk_Percentage', ascending=False)
         
-        mapped_high_risk_count = len(mapped_high_risk_df)
-        mapped_high_risk_pct = (mapped_high_risk_count / mapped_total * 100) if mapped_total > 0 else 0
+        high_risk_employees = len(mapped_high_risk_df)
+        high_risk_pct = (high_risk_employees / total_employees_mapped * 100) if total_employees_mapped > 0 else 0
         
-        st.markdown("<div class='section-header'>Portfolio Tasking Queue (Action Required)</div>", unsafe_allow_html=True)
+        st.markdown("<div class='section-header'>Portfolio Overview </div>", unsafe_allow_html=True)
         m1, m2, m3 = st.columns(3)
-        with m1: st.markdown(f"<div class='metric-container'><div class='metric-label'>Total Map Base</div><div class='metric-value'>{mapped_total}</div></div>", unsafe_allow_html=True)
-        with m2: st.markdown(f"<div class='metric-container'><div class='metric-label'>Pending Action Cases</div><div class='metric-value'>{mapped_high_risk_count}</div></div>", unsafe_allow_html=True)
-        with m3: st.markdown(f"<div class='metric-container'><div class='metric-label'>High Risk Share</div><div class='metric-value'>{mapped_high_risk_pct:.1f}%</div></div>", unsafe_allow_html=True)
+        with m1: st.markdown(f"<div class='metric-container'><div class='metric-label'>Total Mapped Employees</div><div class='metric-value'>{total_employees_mapped}</div></div>", unsafe_allow_html=True)
+        with m2: st.markdown(f"<div class='metric-container'><div class='metric-label'>High Risk Employees</div><div class='metric-value'>{high_risk_employees}</div></div>", unsafe_allow_html=True)
+        with m3: st.markdown(f"<div class='metric-container'><div class='metric-label'>High Risk (%)</div><div class='metric-value'>{high_risk_pct:.1f}%</div></div>", unsafe_allow_html=True)
 
         st.divider()
-        st.write("#### Active Pending Attention Items")
+        st.write("#### Active Pending Actionables")
         
         if not mapped_high_risk_df.empty:
             h_cols_hr = st.columns([1, 2, 1, 1, 1.2])
@@ -385,7 +389,7 @@ elif st.session_state['current_page'] == "ER Manager Portal":
                 cols[2].markdown(f"<span style='color:red'>{row['GRADE']}</span>", unsafe_allow_html=True)
                 cols[3].markdown(f"<span style='color:red; font-weight:bold;'>{row['Attrition_Risk_Percentage']:.1f}%</span>", unsafe_allow_html=True)
                 
-                if cols[4].button("Remarks Form", key=f"hr_rem_{row['EMPID']}"):
+                if cols[4].button("Remarks", key=f"hr_rem_{row['EMPID']}"):
                     st.session_state['remarks_empid'] = row['EMPID']
                     st.session_state['current_page'] = "Remarks"
                     st.rerun()
@@ -395,7 +399,7 @@ elif st.session_state['current_page'] == "ER Manager Portal":
 
 # --- PAGE 4: REMARKS INTERVENTION ---
 elif st.session_state['current_page'] == "Remarks":
-    st.markdown("<h1 class='centered-title'>Intervention Remarks Form Desk</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 class='centered-title'>Remarks</h1>", unsafe_allow_html=True)
     
     if not st.session_state['remarks_empid']:
         st.info("Please select an employee inside the ER Manager Portal to open the evaluation matrix.")
@@ -411,7 +415,7 @@ elif st.session_state['current_page'] == "Remarks":
             base_pct = emp_data['Attrition_Risk_Percentage']
             base_tier = emp_data['Risk_Level']
             
-            st.subheader(f"Pulse Questionnaire for EMPID: {target_id}")
+            st.subheader(f"Questionnaire for EMPID: {target_id}")
             st.markdown(f"**Context Profile:** {emp_data['MAIN_GROUP']} | **Current Baseline:** <span style='color:red; font-weight:bold;'>{base_pct:.1f}% ({base_tier})</span>", unsafe_allow_html=True)
             
             if st.button("Cancel & Return to Dashboard"):
@@ -424,11 +428,11 @@ elif st.session_state['current_page'] == "Remarks":
                 st.markdown("##### Score Parameters Matrix Evaluation")
                 likert_scales = {1: "Dissatisfied", 2: "Somewhat Dissatisfied", 3: "Neutral", 4: "Somewhat Satisfied", 5: "Satisfied"}
                 
-                s_manager = st.radio("Manager Support", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
-                s_role = st.radio("Role Assignment Fit", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
+                s_manager = st.radio("Guidance & Support from Manager", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
+                s_role = st.radio("Experience in the Current Role", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
                 s_team = st.radio("Team & Workplace Environment", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
                 s_learning = st.radio("Learning & Training Ecosystem", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
-                s_growth = st.radio("Career Advancement Levers", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
+                s_growth = st.radio("Career Growth Opportunities", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
                 
                 text_comments = st.text_area("Official Resolution Strategy Comments", placeholder="Enter notes or structural modifications agreed on...")
                 
