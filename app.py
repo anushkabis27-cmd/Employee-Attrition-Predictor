@@ -130,7 +130,7 @@ def run_portfolio_trigger_check(df, manager_id):
 @st.cache_data
 def load_base_data():
     # Pointing explicitly to the correct master data file asset
-    file_path = 'SIP Data final.xlsb.xlsx - Master Attrition Data.csv'
+    file_path = 'SIP Data final.xlsb.xlsx'
     if not os.path.exists(file_path):
         st.error(f"Required database asset '{file_path}' could not be loaded safely.")
         st.stop()
