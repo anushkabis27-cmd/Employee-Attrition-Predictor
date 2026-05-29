@@ -107,12 +107,19 @@ if 'remarks_empid' not in st.session_state: st.session_state['remarks_empid'] = 
 if 'current_manager_id' not in st.session_state: st.session_state['current_manager_id'] = None
 
 
-# --- 5. SIDEBAR NAVIGATION ---
+# --- 5. SIDEBAR NAVIGATION CONTROLLER WITH SAFE FALLBACK ---
 st.sidebar.title("iRETAIN")
 st.sidebar.markdown("---")
 page_options = ["Zone wise turnover prediction", "Employee risk indicator", "ER Manager Portal", "Remarks"]
-selected_sidebar = st.sidebar.radio("NAVIGATION", page_options, 
-                                    index=page_options.index(st.session_state['current_page']))
+
+# Check if the active session matches options array exactly to prevent ValueError index crashes
+if st.session_state['current_page'] in page_options:
+    default_index = page_options.index(st.session_state['current_page'])
+else:
+    default_index = 0
+    st.session_state['current_page'] = page_options[0]
+
+selected_sidebar = st.sidebar.radio("NAVIGATION", page_options, index=default_index)
 
 if selected_sidebar != st.session_state['current_page']:
     st.session_state['current_page'] = selected_sidebar
@@ -250,7 +257,7 @@ elif st.session_state['current_page'] == "Employee risk indicator":
                     st.write("• **Appreciation:** Nominate for performance award.")
                 st.markdown("</div>", unsafe_allow_html=True)
 
-            # --- NATIVE DIALER IMPLEMENTATION ---
+            # --- NATIVE DIALER IMPLEMENTATION CENTER ---
             st.divider()
             st.write("#### Action Center")
             mock_phone = f"+9198765{str(int(row['EMPID']))[-5:]}" if not pd.isna(row['EMPID']) else "+919999999999"
@@ -281,7 +288,7 @@ elif st.session_state['current_page'] == "ER Manager Portal":
         if 'ER manager ID' in df.columns and er_id in df['ER manager ID'].values:
             manager_df = df[df['ER manager ID'] == er_id]
             
-            # Execute email alarm check logic automatically
+            # Execute automated portfolio threshold scan alerts
             run_portfolio_trigger_check(df, er_id)
 
             mapped_total = len(manager_df)
@@ -297,7 +304,7 @@ elif st.session_state['current_page'] == "ER Manager Portal":
 
             st.divider()
             
-            # Implementation of requested view separations using conditional Tabs
+            # Implementation of structural layouts via interactive conditional Tabs
             tab_all, tab_high_risk = st.tabs(["Active Portfolio Registry", "Show high risk employees tab"])
             
             with tab_all:
@@ -365,12 +372,12 @@ elif st.session_state['current_page'] == "ER Manager Portal":
         else: st.error("Manager ID not found.")
 
 
-# --- PAGE 4: REMARKS INTERVENTION FORM & DYNAMIC RECALIBRATION ---
+# --- PAGE 4: REMARKS INTERVENTION FORM & MODEL RECALIBRATION ---
 elif st.session_state['current_page'] == "Remarks":
     st.markdown("<h1 class='centered-title'>Remarks</h1>", unsafe_allow_html=True)
     
     if not st.session_state['remarks_empid']:
-        st.info("Please select an employee inside the ER Manager Portal to access active remarks entries.")
+        st.info("Please select an employee inside the ER Manager Portal to access active remarks entry forms.")
         if st.button("Go to ER Portal"):
             st.session_state['current_page'] = "ER Manager Portal"
             st.rerun()
@@ -398,7 +405,7 @@ elif st.session_state['current_page'] == "Remarks":
                 st.markdown("##### Parameter Metrics")
                 likert_scales = {1: "Dissatisfied", 2: "Somewhat Dissatisfied", 3: "Neutral", 4: "Somewhat Satisfied", 5: "Satisfied"}
                 
-                # Labels cleaned up: Weights and explicit references to the word "Feedback" removed
+                # Parameters fully sanitized of extra words and formatting tags
                 s_manager = st.radio("Manager", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
                 s_role = st.radio("Role", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
                 s_team = st.radio("Team & Workplace Relationships", options=[1, 2, 3, 4, 5], format_func=lambda x: likert_scales[x], horizontal=True, index=2)
