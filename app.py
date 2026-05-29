@@ -131,9 +131,9 @@ def run_portfolio_trigger_check(df, manager_id):
     
     high_risk_share = (active_high_risk / total_count * 100) if total_count > 0 else 0
     
-    # 10% ALERT SHARED PORTFOLIO THRESHOLD
+    # REVISED SYSTEM TRIGGER DISPLAY TEXT (NO EMOJIS, NO MENTION OF 10% LIMITS)
     if high_risk_share > 10.0: 
-        st.warning(f"🚨 System Trigger Notification Issued: Your portfolio pending High Risk share is {high_risk_share:.1f}% (exceeding the 10% organizational limit). ER Manager must intervene immediately.")
+        st.warning(f"System Trigger Notification Issued: Your portfolio pending High Risk share is {high_risk_share:.1f}%. Please intervene immediately.")
 
 
 # --- 4. DATA LOADING ENGINE ---
@@ -301,11 +301,12 @@ elif st.session_state['current_page'] == "Employee risk indicator":
             with col_b:
                 st.markdown(f"<div class='report-card' style='border-left-color: {h_color};'><h4>Mitigation Actionables</h4>", unsafe_allow_html=True)
                 if row.get('Intervention_Status', 'Not started') == 'Completed':
-                    st.write("• **Intervention Concluded:** Feedback form logged successfully.")
+                    st.write("• Intervention Concluded: Feedback form logged successfully.")
                 elif level == 'High':
-                    st.write("• **Urgent Action Needed:** Immediate 1:1 session with ER Manager.")
+                    st.write("• Urgent Action Needed: Immediate 1:1 session with ER Manager.")
                     st.write("• Discuss career aspirations & growth expectations within organization.")
-                    st.write("• Explore transfers or flexible arrangements to manage distance from home.")
+                    st.write("• Map short-term milestones, internal recognition hooks, and upskilling goals.")
+                    st.write("• Explore structural paths like branch transfers or flexible arrangements to handle travel strain.")
                 elif level == 'Medium':
                     st.write("• Engage in career path alignment discussions.")
                 else: 
@@ -406,7 +407,7 @@ elif st.session_state['current_page'] == "ER Manager Portal":
 elif st.session_state['current_page'] == "Feedback Form":
     st.markdown("<h1 class='centered-title'>Feedback Form</h1>", unsafe_allow_html=True)
     
-    # REVISED SPECIFIC EMPTY FALLBACK STATE NOTIFICATION MESSAGE
+    # REQUIRED STATE NOTIFICATION MESSAGE FIXED
     if not st.session_state['remarks_empid']:
         st.info("Please select an employee ID inside the ER Manager Portal to open the evaluation matrix")
         
