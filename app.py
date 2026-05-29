@@ -7,14 +7,14 @@ import os
 # --- 1. CONFIGURATION ---
 st.set_page_config(page_title="iRetain | Workforce Analytics", layout="wide")
 
-# --- SAFE RERUN UTILITY (Prevents navigation freeze on older environments) ---
+# --- SAFE RERUN UTILITY ---
 def safe_rerun():
     try:
         st.rerun()
     except AttributeError:
         st.experimental_rerun()
 
-# --- 2. REFINED PROFESSIONAL UI CSS WITH MINIMALIST SIDEBAR ---
+# --- 2. PROFESSIONAL UI CSS WITH SIDEBAR STYLING ---
 st.markdown("""
     <link rel='stylesheet' href='https://fonts.googleapis.com/css2?family=Mulish:wght=600;700&display=swap'>
 
@@ -109,7 +109,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 
-# --- 3. RECALIBRATED BRACKET CLASSIFICATION ENGINE ---
+# --- 3. RISK BRACKET ENGINE ---
 def classify_revised_risk_tier(score):
     if score <= 20.0:
         return 'Low'
@@ -131,25 +131,36 @@ def run_portfolio_trigger_check(df, manager_id):
     
     high_risk_share = (active_high_risk / total_count * 100) if total_count > 0 else 0
     
-    # REVISED SYSTEM TRIGGER DISPLAY TEXT (NO EMOJIS, NO MENTION OF 10% LIMITS)
+    # SYSTEM TRIGGER NOTIFICATION (NO EMOJIS, CLEAN TEXT)
     if high_risk_share > 10.0: 
         st.warning(f"System Trigger Notification Issued: Your portfolio pending High Risk share is {high_risk_share:.1f}%. Please intervene immediately.")
 
 
-# --- 4. DATA LOADING ENGINE ---
+# --- 4. HIGH-PERFORMANCE DATA ENGINE (CSV CACHE LAYER) ---
 @st.cache_data
 def load_base_data():
-    file_path = 'SIP Data final.xlsx'
-    if not os.path.exists(file_path):
-        st.error(f"Required Excel spreadsheet asset '{file_path}' could not be found in the current directory.")
+    excel_path = 'SIP Data final.xlsx'
+    cache_path = 'SIP Data final_active_cache.csv'
+    
+    # If a lightweight active cache file already exists, load from it instantly
+    if os.path.exists(cache_path):
+        df = pd.read_csv(cache_path)
+        df.columns = df.columns.str.strip()
+        return df
+        
+    # Otherwise, perform initial bootstrap load from master Excel workbook
+    if not os.path.exists(excel_path):
+        st.error(f"Required Excel spreadsheet asset '{excel_path}' could not be found.")
         st.stop()
         
     try:
-        df = pd.read_excel(file_path, sheet_name='Master Attrition Data')
+        df = pd.read_excel(excel_path, sheet_name='Master Attrition Data')
     except Exception:
-        df = pd.read_excel(file_path, sheet_name=0)
+        df = pd.read_excel(excel_path, sheet_name=0)
         
     df.columns = df.columns.str.strip()
+    # Save a high-speed copy to disk for subsequent app requests
+    df.to_csv(cache_path, index=False)
     return df
 
 if 'master_data' not in st.session_state:
@@ -165,6 +176,7 @@ if 'selected_empid' not in st.session_state: st.session_state['selected_empid'] 
 if 'remarks_empid' not in st.session_state: st.session_state['remarks_empid'] = None
 if 'current_manager_id' not in st.session_state: st.session_state['current_manager_id'] = None
 if 'er_authenticated' not in st.session_state: st.session_state['er_authenticated'] = False
+if 'last_submission_alert' not in st.session_state: st.session_state['last_submission_alert'] = None
 
 
 # --- 5. SIDEBAR NAVIGATION CONTROLLER ---
@@ -333,6 +345,11 @@ elif st.session_state['current_page'] == "Employee risk indicator":
 elif st.session_state['current_page'] == "ER Manager Portal":
     st.markdown("<h1 class='centered-title'>ER Manager Portal</h1>", unsafe_allow_html=True)
     
+    # Render persistent notification banner instantly if an action was just completed
+    if st.session_state['last_submission_alert']:
+        st.success(st.session_state['last_submission_alert'])
+        st.session_state['last_submission_alert'] = None  
+        
     col_input, col_btn = st.columns([3, 1])
     with col_input:
         input_er_id = st.number_input("Enter ER Manager ID", min_value=0, step=1, value=st.session_state['current_manager_id'] if st.session_state['current_manager_id'] else 0)
@@ -407,7 +424,7 @@ elif st.session_state['current_page'] == "ER Manager Portal":
 elif st.session_state['current_page'] == "Feedback Form":
     st.markdown("<h1 class='centered-title'>Feedback Form</h1>", unsafe_allow_html=True)
     
-    # REQUIRED STATE NOTIFICATION MESSAGE FIXED
+    # REQUIRED STATE NOTIFICATION PHRASE (EMOJIS REMOVED)
     if not st.session_state['remarks_empid']:
         st.info("Please select an employee ID inside the ER Manager Portal to open the evaluation matrix")
         
@@ -474,6 +491,7 @@ elif st.session_state['current_page'] == "Feedback Form":
                         adjusted_risk = min(adjusted_risk, 50.0)
                         adjusted_tier = classify_revised_risk_tier(adjusted_risk)
                     
+                    # PROTOTYPE NOTIFICATION ALGORITHM (Instant calculations)
                     risk_delta = adjusted_risk - base_pct
                     if risk_delta < 0:
                         change_msg = f"decreased by {abs(risk_delta):.2f}%"
@@ -482,18 +500,18 @@ elif st.session_state['current_page'] == "Feedback Form":
                     else:
                         change_msg = "remained unchanged"
                     
+                    # 1. Update live application session state metrics (Instantaneous)
                     st.session_state['master_data'].loc[st.session_state['master_data']['EMPID'] == target_id, 'Attrition_Risk_Percentage'] = adjusted_risk
                     st.session_state['master_data'].loc[st.session_state['master_data']['EMPID'] == target_id, 'Risk_Level'] = adjusted_tier
                     st.session_state['master_data'].loc[st.session_state['master_data']['EMPID'] == target_id, 'Intervention_Status'] = 'Completed'
                     
-                    try:
-                        with pd.ExcelWriter('SIP Data final.xlsx', engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
-                            st.session_state['master_data'].to_excel(writer, sheet_name='Master Attrition Data', index=False)
-                    except Exception:
-                        st.session_state['master_data'].to_excel('SIP Data final.xlsx', index=False)
+                    # 2. HIGH SPEED DISK PERSISTENCE: Write back directly to the optimized CSV Cache layer file
+                    st.session_state['master_data'].to_csv('SIP Data final_active_cache.csv', index=False)
                     
-                    st.success(f"Form Logged! Employee {target_id} marked as 'Completed' and successfully moved out of task queue. Risk score {change_msg} (Moved from {base_pct:.1f}% to {adjusted_risk:.1f}%).")
+                    # 3. Stage notification text securely inside session memory to survive the incoming page reload
+                    st.session_state['last_submission_alert'] = f"Form Logged! Employee {target_id} marked as 'Completed' and successfully moved out of task queue. Attrition risk score {change_msg} (Moved from {base_pct:.1f}% to {adjusted_risk:.1f}%)."
                     
+                    # 4. Clean up pointer indexes and redirect back smoothly
                     st.session_state['remarks_empid'] = None
                     st.session_state['current_page'] = "ER Manager Portal"
                     st.rerun()
