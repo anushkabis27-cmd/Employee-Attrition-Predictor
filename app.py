@@ -44,72 +44,60 @@ st.markdown("""
     
     .chart-container { padding: 5px; }
 
-    /* =========================================================================
-       CLEAN, MODERN SIDEBAR OVERRIDES: MULISH SEMIBOLD & BLACK TEXT INDEXING
-       ========================================================================= */
-    
-    /* Set Sidebar Title to look cohesive */
+    /* BLOCK LEVEL LINK OVERRIDES FOR SIDEBAR MENU ROWS */
     [data-testid="stSidebar"] h1 {
         font-family: 'Mulish', sans-serif !important;
         font-weight: 700 !important;
         color: #000000 !important;
     }
 
-    /* Target the container form block wrapper */
     [data-testid="stSidebar"] [data-testid="stWidgetFormWrapper"] {
         width: 100%;
     }
     
-    /* Set up structural layout for the radio items group */
     [data-testid="stSidebar"] div[role="radiogroup"] {
         display: flex;
         flex-direction: column;
         width: 100%;
-        gap: 0px !important; /* Stripped gap spacings to support a compact design */
+        gap: 0px !important;
     }
     
-    /* transform the labels completely into full-width row panels with no button styling */
     [data-testid="stSidebar"] div[role="radiogroup"] label {
         display: block !important;
         width: 100% !important;
-        padding: 6px 16px !important; /* Tight padding variables for a premium presentation */
+        padding: 6px 16px !important;
         margin: 0px !important;
-        background-color: transparent !important; /* Statically cleared all background colors */
-        border: none !important; /* Removed borders and bounding box outlines */
-        border-radius: 0px !important; /* Cleared rounded card corners */
-        box-shadow: none !important; /* Removed shadow decorations */
+        background-color: transparent !important;
+        border: none !important;
+        border-radius: 0px !important;
+        box-shadow: none !important;
         cursor: pointer !important;
         transition: background-color 0.15s ease-in-out;
     }
     
-    /* Set Typography constraints to Mulish SemiBold and True Black */
     [data-testid="stSidebar"] div[role="radiogroup"] label div[data-testid="stMarkdownContainer"] p {
         font-family: 'Mulish', sans-serif !important;
-        font-weight: 600 !important; /* Force Mulish SemiBold parameter weights */
-        color: #000000 !important;   /* Force clean black typography colors */
+        font-weight: 600 !important;
+        color: #000000 !important;
         font-size: 15px !important;
         margin: 0px !important;
         padding: 0px !important;
     }
 
-    /* Minimalist Row Hover: light semi-transparent shade backdrop overlay */
     [data-testid="stSidebar"] div[role="radiogroup"] label:hover {
         background-color: rgba(255, 255, 255, 0.12) !important;
     }
     
-    /* Active Selected Menu Page Item Indicator */
     [data-testid="stSidebar"] div[role="radiogroup"] label[data-checked="true"] {
-        background-color: rgba(0, 0, 0, 0.08) !important; /* Dark overlay anchor tint for selection distinction */
-        border-left: 4px solid #000000 !important; /* Minimal left border accent line marking active focus */
-        padding-left: 12px !important; /* Offset padding adjustment to preserve absolute line alignments */
+        background-color: rgba(0, 0, 0, 0.08) !important;
+        border-left: 4px solid #000000 !important;
+        padding-left: 12px !important;
     }
     
-    /* Hide native radio input circles from view completely */
     [data-testid="stSidebar"] div[role="radiogroup"] label div[data-testid="stBlock"] {
         display: none !important;
     }
     
-    /* Ensure markdown container wraps cleanly to prevent padding breaks */
     [data-testid="stSidebar"] div[role="radiogroup"] label div[data-testid="stMarkdownContainer"] {
         width: 100%;
     }
@@ -394,71 +382,35 @@ elif st.session_state['current_page'] == "ER Manager Portal":
 
         st.divider()
         
-        # Implementation of layouts via tabs
-        tab_all, tab_high_risk = st.tabs(["Active Portfolio Registry", "Show high risk employees tab"])
-        
-        with tab_all:
-            st.write("#### Active Portfolio Registry")
-            portfolio_selection = manager_df.sort_values(by='Attrition_Risk_Percentage', ascending=False)
-            
-            if not portfolio_selection.empty:
-                h_cols = st.columns([1, 2, 1, 1, 1.2])
-                h_cols[0].write("**EMPID**")
-                h_cols[1].write("**Group**")
-                h_cols[2].write("**Grade**")
-                h_cols[3].write("**Risk %**")
-                h_cols[4].write("**Actions**")
-                st.markdown("---")
+        # Display High Risk Employees panel directly without tabs
+        st.write("#### Show High Risk Employees")
+        if not mapped_high_risk_df.empty:
+            h_cols_hr = st.columns([1, 2, 1, 1, 1.2])
+            h_cols_hr[0].write("**EMPID**")
+            h_cols_hr[1].write("**Group**")
+            h_cols_hr[2].write("**Grade**")
+            h_cols_hr[3].write("**Risk %**")
+            h_cols_hr[4].write("**Actions**")
+            st.markdown("---")
 
-                for index, row in portfolio_selection.iterrows():
-                    cols = st.columns([1, 2, 1, 1, 1.2])
-                    r_color = "red" if row['Risk_Level'] == "High" else ("#FFCC00" if row['Risk_Level'] == "Medium" else "green")
-                    
-                    if cols[0].button(str(row['EMPID']), key=f"p_view_{row['EMPID']}"):
-                        st.session_state['selected_empid'] = row['EMPID']
-                        st.session_state['current_page'] = "Employee risk indicator"
-                        st.rerun()
-                        
-                    cols[1].markdown(f"<span style='color:{r_color}; font-weight:500;'>{row['MAIN_GROUP']}</span>", unsafe_allow_html=True)
-                    cols[2].markdown(f"<span style='color:{r_color}'>{row['GRADE']}</span>", unsafe_allow_html=True)
-                    cols[3].markdown(f"<span style='color:{r_color}; font-weight:bold;'>{row['Attrition_Risk_Percentage']:.1f}%</span>", unsafe_allow_html=True)
-                    
-                    if cols[4].button("Remarks", key=f"rem_{row['EMPID']}"):
-                        st.session_state['remarks_empid'] = row['EMPID']
-                        st.session_state['current_page'] = "Remarks"
-                        st.rerun()
-            else:
-                st.success("No active employees mapped to your portfolio.")
+            for index, row in mapped_high_risk_df.iterrows():
+                cols = st.columns([1, 2, 1, 1, 1.2])
                 
-        with tab_high_risk:
-            st.write("#### Critical Portfolio Hotspots")
-            if not mapped_high_risk_df.empty:
-                h_cols_hr = st.columns([1, 2, 1, 1, 1.2])
-                h_cols_hr[0].write("**EMPID**")
-                h_cols_hr[1].write("**Group**")
-                h_cols_hr[2].write("**Grade**")
-                h_cols_hr[3].write("**Risk %**")
-                h_cols_hr[4].write("**Actions**")
-                st.markdown("---")
-
-                for index, row in mapped_high_risk_df.iterrows():
-                    cols = st.columns([1, 2, 1, 1, 1.2])
+                if cols[0].button(str(row['EMPID']), key=f"hr_view_{row['EMPID']}"):
+                    st.session_state['selected_empid'] = row['EMPID']
+                    st.session_state['current_page'] = "Employee risk indicator"
+                    st.rerun()
                     
-                    if cols[0].button(str(row['EMPID']), key=f"hr_view_{row['EMPID']}"):
-                        st.session_state['selected_empid'] = row['EMPID']
-                        st.session_state['current_page'] = "Employee risk indicator"
-                        st.rerun()
-                        
-                    cols[1].markdown(f"<span style='color:red; font-weight:500;'>{row['MAIN_GROUP']}</span>", unsafe_allow_html=True)
-                    cols[2].markdown(f"<span style='color:red'>{row['GRADE']}</span>", unsafe_allow_html=True)
-                    cols[3].markdown(f"<span style='color:red; font-weight:bold;'>{row['Attrition_Risk_Percentage']:.1f}%</span>", unsafe_allow_html=True)
-                    
-                    if cols[4].button("Remarks", key=f"hr_rem_{row['EMPID']}"):
-                        st.session_state['remarks_empid'] = row['EMPID']
-                        st.session_state['current_page'] = "Remarks"
-                        st.rerun()
-            else:
-                st.success("No high-risk employees mapped to your portfolio.")
+                cols[1].markdown(f"<span style='color:red; font-weight:500;'>{row['MAIN_GROUP']}</span>", unsafe_allow_html=True)
+                cols[2].markdown(f"<span style='color:red'>{row['GRADE']}</span>", unsafe_allow_html=True)
+                cols[3].markdown(f"<span style='color:red; font-weight:bold;'>{row['Attrition_Risk_Percentage']:.1f}%</span>", unsafe_allow_html=True)
+                
+                if cols[4].button("Remarks", key=f"hr_rem_{row['EMPID']}"):
+                    st.session_state['remarks_empid'] = row['EMPID']
+                    st.session_state['current_page'] = "Remarks"
+                    st.rerun()
+        else:
+            st.success("No high-risk employees mapped to your portfolio.")
 
 
 # --- PAGE 4: REMARKS INTERVENTION FORM & MODEL RECALIBRATION ---
