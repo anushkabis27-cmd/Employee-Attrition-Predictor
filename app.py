@@ -126,18 +126,27 @@ def run_portfolio_trigger_check(df, manager_id):
         st.warning(f"System Trigger Notification Issued: ER Manager portfolio average risk is {avg_portfolio_risk:.1f}%. ER Manager must intervene immediately.")
 
 
-# --- 4. DATA LOADING ENGINE ---
+# --- 4. DATA LOADING ENGINE (WITH ENCODING FALLBACKS) ---
 @st.cache_data
 def load_base_data():
-    # Explicit connection to the 20,000 record final master csv source
-    file_path = 'SIP Data final.xlsx'
+    # Set to match the precise name of the active file asset
+    file_path = 'SIP Data final.xlsx - Master Attrition Data.csv'
     if not os.path.exists(file_path):
-        st.error(f"Required database asset '{file_path}' could not be loaded safely.")
+        st.error(f"Required database asset '{file_path}' could not be found.")
         st.stop()
     
-    df = pd.read_csv(file_path)
-    df.columns = df.columns.str.strip()
-    return df
+    # Cycle through encodings to permanently eliminate UnicodeDecodeError issues
+    for encoding_option in ['utf-8', 'utf-8-sig', 'latin-1', 'cp1252']:
+        try:
+            df = pd.read_csv(file_path, encoding=encoding_option)
+            df.columns = df.columns.str.strip()
+            return df
+        except UnicodeDecodeError:
+            continue
+            
+    # Terminal absolute safe fallback configuration if all decode tracks fail
+    st.error("Critical error: Unable to parse file characters securely due to file encoding anomalies.")
+    st.stop()
 
 if 'master_data' not in st.session_state:
     st.session_state['master_data'] = load_base_data()
@@ -467,7 +476,7 @@ elif st.session_state['current_page'] == "Remarks":
                     st.session_state['master_data'].loc[st.session_state['master_data']['EMPID'] == target_id, 'Intervention_Status'] = 'Completed'
                     
                     # PERSISTENCE ENGINE: Write back directly to disk storage file
-                    st.session_state['master_data'].to_csv('SIP Data final.xlsb.xlsx - Master Attrition Data.csv', index=False)
+                    st.session_state['master_data'].to_csv('SIP Data final.xlsx - Master Attrition Data.csv', index=False)
                     
                     st.success(f"Form Logged! Employee {target_id} marked as 'Completed' and successfully removed from tracking queues. Risk score {change_msg} (Moved from {base_pct:.1f}% to {adjusted_risk:.1f}%).")
                     
