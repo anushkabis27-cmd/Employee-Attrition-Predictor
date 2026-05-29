@@ -126,7 +126,7 @@ def run_portfolio_trigger_check(df, manager_id):
     
     # SYSTEM TRIGGER: Checked and flagged if the share of pending high risk cases exceeds 10%
     if high_risk_share > 10.0: 
-        st.warning(f"System Trigger Notification Issued: Your portfolio pending High Risk share is {high_risk_share:.1f}%. Please intervene immediately.")
+        st.warning(f"System Trigger Notification Issued: Your portfolio's High Risk share is {high_risk_share:.1f}%. Please intervene immediately.")
 
 
 # --- 4. DATA LOADING ENGINE ---
