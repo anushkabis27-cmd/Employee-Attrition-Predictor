@@ -1,7 +1,9 @@
-import streamlit as st
+mport streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import plotly.express as px
+import plotly.graph_objects as ob
 import os
 
 # --- 1. CONFIGURATION ---
@@ -135,7 +137,7 @@ def run_portfolio_trigger_check(df, manager_id):
         st.warning(f"System Trigger Notification Issued: Your portfolio pending High Risk share is {high_risk_share:.1f}%. Please intervene immediately.")
 
 
-# --- 4. DATA LOADING ENGINE (CSV CACHE LAYER FOR MAX PERFORMANCE) ---
+# --- 4. HIGH-PERFORMANCE DATA ENGINE (CSV CACHE LAYER) ---
 @st.cache_data
 def load_base_data():
     excel_path = 'SIP Data final.xlsx'
@@ -147,7 +149,7 @@ def load_base_data():
         return df
         
     if not os.path.exists(excel_path):
-        st.error(f"Required Excel spreadsheet asset '{excel_path}' could not be found in the current directory.")
+        st.error(f"Required Excel spreadsheet asset '{excel_path}' could not be found.")
         st.stop()
         
     try:
@@ -164,6 +166,39 @@ if 'master_data' not in st.session_state:
 
 df = st.session_state['master_data']
 
+# --- GEOGRAPHIC REGIONAL META MAPPING DICTIONARIES ---
+city_to_state = {
+    'Cuttack': 'Odisha', 'Pune': 'Maharashtra', 'Noida': 'Uttar Pradesh', 
+    'Jodhpur': 'Rajasthan', 'Kolkata': 'West Bengal', 'Mumbai': 'Maharashtra', 
+    'Hyderabad': 'Telangana', 'Ranchi': 'Jharkhand', 'Delhi': 'Delhi', 
+    'Siliguri': 'West Bengal', 'Bangalore': 'Karnataka', 'Coimbatore': 'Tamil Nadu', 
+    'Kanpur': 'Uttar Pradesh', 'Lucknow': 'Uttar Pradesh', 'Ahmedabad': 'Gujarat', 
+    'Chennai': 'Tamil Nadu', 'Patna': 'Bihar'
+}
+
+city_coords = {
+    'Cuttack': [20.4625, 85.8830], 'Pune': [18.5204, 73.8567], 'Noida': [28.5355, 77.3910], 
+    'Jodhpur': [26.2389, 73.0243], 'Kolkata': [22.5726, 88.3639], 'Mumbai': [19.0760, 72.8777], 
+    'Hyderabad': [17.3850, 78.4867], 'Ranchi': [23.3441, 85.3096], 'Delhi': [28.6139, 77.2090], 
+    'Siliguri': [26.7271, 88.3953], 'Bangalore': [12.9716, 77.5946], 'Coimbatore': [11.0168, 76.9558], 
+    'Kanpur': [26.4499, 80.3319], 'Lucknow': [26.8467, 80.9462], 'Ahmedabad': [23.0225, 72.5714], 
+    'Chennai': [13.0827, 80.2707], 'Patna': [25.5941, 85.1376]
+}
+
+# Inject regional mapping structures to active memory frame
+if 'State' not in df.columns:
+    df['State'] = df['Work_Location'].map(city_to_state).fillna('Other')
+if 'Latitude' not in df.columns:
+    df['Latitude'] = df['Work_Location'].map(lambda x: city_coords[x][0] if x in city_coords else np.nan)
+if 'Longitude' not in df.columns:
+    df['Longitude'] = df['Work_Location'].map(lambda x: city_coords[x][1] if x in city_coords else np.nan)
+
+# Dynamic Demographic Groups Helpers
+if 'Age_Group' not in df.columns:
+    df['Age_Group'] = pd.cut(df['AGE'], bins=[0, 24, 29, 39, 49, 100], labels=['Under 25', '25-29', '30-39', '40-49', '50 and Above'])
+if 'Tenure_Group' not in df.columns:
+    df['Tenure_Group'] = pd.cut(df['TENURE_YRS'], bins=[-1, 1, 3, 5, 10, 100], labels=['0-1 Yr', '1-3 Yrs', '3-5 Yrs', '5-10 Yrs', '10+ Yrs'])
+
 # App Navigation Variables
 if 'view_mode' not in st.session_state: st.session_state['view_mode'] = 'Percentage'
 if 'risk_filter' not in st.session_state: st.session_state['risk_filter'] = 'High'
@@ -172,12 +207,20 @@ if 'selected_empid' not in st.session_state: st.session_state['selected_empid'] 
 if 'remarks_empid' not in st.session_state: st.session_state['remarks_empid'] = None
 if 'current_manager_id' not in st.session_state: st.session_state['current_manager_id'] = None
 if 'er_authenticated' not in st.session_state: st.session_state['er_authenticated'] = False
+if 'map_selected_state' not in st.session_state: st.session_state['map_selected_state'] = 'All India'
 
 
 # --- 5. SIDEBAR NAVIGATION CONTROLLER ---
 st.sidebar.title("iRETAIN")
 st.sidebar.markdown("---")
-page_options = ["Zone wise turnover prediction", "Employee risk indicator", "ER Manager Portal", "Feedback Form"]
+# INSERTED "Geographic Risk Heat Map" IMMEDIATELY AFTER "Zone wise turnover prediction"
+page_options = [
+    "Zone wise turnover prediction", 
+    "Geographic Risk Heat Map", 
+    "Employee risk indicator", 
+    "ER Manager Portal", 
+    "Feedback Form"
+]
 
 if st.session_state['current_page'] in page_options:
     default_index = page_options.index(st.session_state['current_page'])
@@ -253,7 +296,148 @@ if st.session_state['current_page'] == "Zone wise turnover prediction":
         st.markdown('</div>', unsafe_allow_html=True)
 
 
-# --- PAGE 2: EMPLOYEE RISK INDICATOR ---
+# --- PAGE 2: GEOGRAPHIC RISK HEAT MAP (NEW ADDITION) ---
+elif st.session_state['current_page'] == "Geographic Risk Heat Map":
+    st.markdown("<h1 class='centered-title'>Geographic Risk Heat Map</h1>", unsafe_allow_html=True)
+    
+    # Filtering Control Panel Setup
+    st.markdown("<div class='section-header'>Filter Operations Control Panel</div>", unsafe_allow_html=True)
+    f1, f2, f3, f4 = st.columns(4)
+    with f1:
+        sel_dept = st.multiselect("Department", options=sorted(df['MAIN_GROUP'].dropna().unique().tolist()))
+    with f2:
+        sel_grade = st.multiselect("Grade / Band", options=sorted(df['GRADE'].dropna().unique().tolist()))
+    with f3:
+        sel_age = st.multiselect("Age Group", options=['Under 25', '25-29', '30-39', '40-49', '50 and Above'])
+    with f4:
+        sel_tenure = st.multiselect("Tenure Group", options=['0-1 Yr', '1-3 Yrs', '3-5 Yrs', '5-10 Yrs', '10+ Yrs'])
+
+    # Apply filters dynamically
+    map_df = df.copy()
+    if sel_dept: map_df = map_df[map_df['MAIN_GROUP'].isin(sel_dept)]
+    if sel_grade: map_df = map_df[map_df['GRADE'].isin(sel_grade)]
+    if sel_age: map_df = map_df[map_df['Age_Group'].isin(sel_age)]
+    if sel_tenure: map_df = map_df[map_df['Tenure_Group'].isin(sel_tenure)]
+
+    st.divider()
+    
+    # Layout splits into Map Workspace and State Summary Side Panel
+    col_map_canvas, col_side_panel = st.columns([3, 1.2])
+    
+    with col_side_panel:
+        st.markdown("<div class='section-header'>Regional Navigation Desk</div>", unsafe_allow_html=True)
+        state_options = ['All India'] + sorted([s for s in map_df['State'].unique() if s != 'Other'])
+        st.session_state['map_selected_state'] = st.selectbox("Select State Focus View", options=state_options, index=state_options.index(st.session_state['map_selected_state']) if st.session_state['map_selected_state'] in state_options else 0)
+        
+        # Aggregate statistics based on selection view focus
+        if st.session_state['map_selected_state'] == 'All India':
+            focused_df = map_df
+            display_title = "All India Summary"
+        else:
+            focused_df = map_df[map_df['State'] == st.session_state['map_selected_state']]
+            display_title = st.session_state['map_selected_state']
+
+        s_total = len(focused_df)
+        s_high = len(focused_df[focused_df['Risk_Level'] == 'High'])
+        s_pct = (s_high / s_total * 100) if s_total > 0 else 0.0
+        s_avg_score = focused_df['Attrition_Risk_Percentage'].mean() if s_total > 0 else 0.0
+
+        st.markdown(f"""
+        <div class='report-card'>
+            <h4>{display_title} Dashboard</h4>
+            <p><b>Total Headcount:</b> {s_total}</p>
+            <p><b>High Risk Count:</b> {s_high}</p>
+            <p><b>High Risk Concentration:</b> {s_pct:.1f}%</p>
+            <p><b>Average Attrition Risk:</b> {s_avg_score:.1f}%</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        if st.session_state['map_selected_state'] != 'All India' and s_total > 0:
+            st.markdown("##### Top Highest-Risk Cities")
+            city_metrics = focused_df.groupby('Work_Location').apply(
+                lambda x: pd.Series({
+                    'High_Risk_Pct': (len(x[x['Risk_Level'] == 'High']) / len(x) * 100)
+                }), include_groups=False
+            ).reset_index().sort_values(by='High_Risk_Pct', ascending=False)
+            
+            for idx, c_row in city_metrics.head(5).iterrows():
+                st.caption(f"• {c_row['Work_Location']}: {c_row['High_Risk_Pct']:.1f}% High Risk share")
+
+    with col_map_canvas:
+        # Build geographic plotting points matrix
+        geo_agg = map_df.groupby(['Work_Location', 'State', 'Latitude', 'Longitude']).apply(
+            lambda x: pd.Series({
+                'Total_Employees': len(x),
+                'High_Risk_Employees': len(x[x['Risk_Level'] == 'High']),
+                'High_Risk_Percentage': (len(x[x['Risk_Level'] == 'High']) / len(x) * 100),
+                'Average_Risk_Score': x['Attrition_Risk_Percentage'].mean()
+            }), include_groups=False
+        ).reset_index()
+
+        # Dynamic risk status tag classification matching guidelines
+        geo_agg['Risk_Category'] = geo_agg['High_Risk_Percentage'].apply(classify_revised_risk_tier)
+
+        # Set up coordinates zoom focus vectors
+        if st.session_state['map_selected_state'] == 'All India':
+            center_lat, center_lon = 22.5, 78.5
+            zoom_level = 3.6
+            plot_df = geo_agg
+        else:
+            plot_df = geo_agg[geo_agg['State'] == st.session_state['map_selected_state']]
+            if not plot_df.empty:
+                center_lat, center_lon = plot_df['Latitude'].mean(), plot_df['Longitude'].mean()
+                zoom_level = 5.5
+            else:
+                center_lat, center_lon = 22.5, 78.5
+                zoom_level = 3.6
+
+        if not plot_df.empty:
+            # Build professional Plotly map layers using smooth color scale mapping sequences
+            fig_map = px.scatter_mapbox(
+                plot_df,
+                lat="Latitude",
+                lon="Longitude",
+                size="Total_Employees",
+                color="High_Risk_Percentage",
+                color_continuous_scale=["#28A745", "#FFCC00", "#D7191C"], # Green → Yellow → Red 
+                range_color=[0, 100],
+                zoom=zoom_level,
+                center={"lat": center_lat, "lon": center_lon},
+                text="Work_Location",
+                mapbox_style="carto-positron",
+                height=580,
+                hover_name="Work_Location",
+                labels={"High_Risk_Percentage": "High Risk %"},
+                custom_data=["Total_Employees", "High_Risk_Employees", "High_Risk_Percentage", "Risk_Category"]
+            )
+
+            # Define uniform professional tooltip layout configuration strings
+            fig_map.update_traces(
+                hovertemplate="<br>".join([
+                    "<b>City: %{hovertext}</b>",
+                    "Total Employees: %{customdata[0]}",
+                    "High Risk Employees: %{customdata[1]}",
+                    "High Risk %: %{customdata[2]:.1f}%",
+                    "Risk Category: %{customdata[3]}"
+                ])
+            )
+
+            fig_map.update_layout(
+                margin={"r":0,"t":0,"l":0,"b":0},
+                coloraxis_colorbar=dict(
+                    title="High Risk %",
+                    thicknessmode="pixels", thickness=15,
+                    lenmode="pixels", len=300,
+                    yanchor="top", y=1,
+                    xanchor="left", x=0.02
+                )
+            )
+            st.plotly_chart(fig_map, use_container_width=True)
+        else:
+            st.info("No matching geographic records available for the specified criteria configuration.")
+
+
+# --- PAGE 3: EMPLOYEE RISK INDICATOR ---
 elif st.session_state['current_page'] == "Employee risk indicator":
     st.markdown("<h1 class='centered-title'>Employee Risk Indicator</h1>", unsafe_allow_html=True)
     if st.session_state['selected_empid']:
@@ -336,10 +520,10 @@ elif st.session_state['current_page'] == "Employee risk indicator":
         else: st.error("EMPID not found.")
 
 
-# --- PAGE 3: ER MANAGER PORTAL ---
+# --- PAGE 4: ER MANAGER PORTAL ---
 elif st.session_state['current_page'] == "ER Manager Portal":
     st.markdown("<h1 class='centered-title'>ER Manager Portal</h1>", unsafe_allow_html=True)
-        
+    
     col_input, col_btn = st.columns([3, 1])
     with col_input:
         input_er_id = st.number_input("Enter ER Manager ID", min_value=0, step=1, value=st.session_state['current_manager_id'] if st.session_state['current_manager_id'] else 0)
@@ -410,7 +594,7 @@ elif st.session_state['current_page'] == "ER Manager Portal":
             st.success("No high-risk pending employee interventions remain in your active work list.")
 
 
-# --- PAGE 4: FEEDBACK FORM INTERVENTION ---
+# --- PAGE 5: FEEDBACK FORM INTERVENTION ---
 elif st.session_state['current_page'] == "Feedback Form":
     st.markdown("<h1 class='centered-title'>Feedback Form</h1>", unsafe_allow_html=True)
     
@@ -425,7 +609,6 @@ elif st.session_state['current_page'] == "Feedback Form":
     else:
         target_id = st.session_state['remarks_empid']
         
-        # Display step metrics result box upon form submission
         if f"success_banner_{target_id}" in st.session_state and st.session_state[f"success_banner_{target_id}"]:
             st.success(st.session_state[f"success_banner_{target_id}"])
             
@@ -454,7 +637,6 @@ elif st.session_state['current_page'] == "Feedback Form":
                     
                 st.divider()
                 
-                # REVISED CONFIGURATION: Status option dropdown rendered cleanly ABOVE the form matrix
                 status_selection = st.selectbox("Status", options=["Not Started", "Ongoing", "Completed"], index=2)
                 
                 with st.form("remarks_capture_form"):
@@ -496,24 +678,20 @@ elif st.session_state['current_page'] == "Feedback Form":
                             adjusted_risk = min(adjusted_risk, 50.0)
                             adjusted_tier = classify_revised_risk_tier(adjusted_risk)
                         
-                        # Calculating the exact direction and value delta metrics
                         risk_delta = adjusted_risk - base_pct
                         if risk_delta < 0:
                             change_msg = f"decreased by {abs(risk_delta):.2f}%"
                         elif risk_delta > 0:
                             change_msg = f"increased by {risk_delta:.2f}%"
                         else:
-                            change_msg = "remained unchanged by 0.00%"
+                            change_msg = "remained unchanged"
                         
-                        # Update session dataset object
                         st.session_state['master_data'].loc[st.session_state['master_data']['EMPID'] == target_id, 'Attrition_Risk_Percentage'] = adjusted_risk
                         st.session_state['master_data'].loc[st.session_state['master_data']['EMPID'] == target_id, 'Risk_Level'] = adjusted_tier
                         st.session_state['master_data'].loc[st.session_state['master_data']['EMPID'] == target_id, 'Intervention_Status'] = status_selection
                         
-                        # Persist back directly to data cache layer
                         st.session_state['master_data'].to_csv('SIP Data final_active_cache.csv', index=False)
                         
-                        # FIXED EXACT OUTPUT NOTIFICATION STRING (EXACT FORMAT MATCHING REQUEST)
                         st.session_state[f"success_banner_{target_id}"] = f"Feedback submitted and successfully removed from pending queue. The risk percentage of Emp ID {target_id} {change_msg}."
                         st.rerun()
             else:
