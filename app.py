@@ -1,9 +1,7 @@
-mport streamlit as st
+import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import plotly.express as px
-import plotly.graph_objects as ob
 import os
 
 # --- 1. CONFIGURATION ---
@@ -111,7 +109,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 
-# --- 3. RECALIBRATED BRACKET CLASSIFICATION ENGINE ---
+# --- 3. RISK BRACKET ENGINE ---
 def classify_revised_risk_tier(score):
     if score <= 20.0:
         return 'Low'
@@ -149,7 +147,7 @@ def load_base_data():
         return df
         
     if not os.path.exists(excel_path):
-        st.error(f"Required Excel spreadsheet asset '{excel_path}' could not be found.")
+        st.error(f"Required Excel spreadsheet asset '{excel_path}' could not be found in the current directory.")
         st.stop()
         
     try:
@@ -185,7 +183,6 @@ city_coords = {
     'Chennai': [13.0827, 80.2707], 'Patna': [25.5941, 85.1376]
 }
 
-# Inject regional mapping structures to active memory frame
 if 'State' not in df.columns:
     df['State'] = df['Work_Location'].map(city_to_state).fillna('Other')
 if 'Latitude' not in df.columns:
@@ -193,7 +190,6 @@ if 'Latitude' not in df.columns:
 if 'Longitude' not in df.columns:
     df['Longitude'] = df['Work_Location'].map(lambda x: city_coords[x][1] if x in city_coords else np.nan)
 
-# Dynamic Demographic Groups Helpers
 if 'Age_Group' not in df.columns:
     df['Age_Group'] = pd.cut(df['AGE'], bins=[0, 24, 29, 39, 49, 100], labels=['Under 25', '25-29', '30-39', '40-49', '50 and Above'])
 if 'Tenure_Group' not in df.columns:
@@ -213,7 +209,6 @@ if 'map_selected_state' not in st.session_state: st.session_state['map_selected_
 # --- 5. SIDEBAR NAVIGATION CONTROLLER ---
 st.sidebar.title("iRETAIN")
 st.sidebar.markdown("---")
-# INSERTED "Geographic Risk Heat Map" IMMEDIATELY AFTER "Zone wise turnover prediction"
 page_options = [
     "Zone wise turnover prediction", 
     "Geographic Risk Heat Map", 
@@ -296,11 +291,10 @@ if st.session_state['current_page'] == "Zone wise turnover prediction":
         st.markdown('</div>', unsafe_allow_html=True)
 
 
-# --- PAGE 2: GEOGRAPHIC RISK HEAT MAP (NEW ADDITION) ---
+# --- PAGE 2: GEOGRAPHIC RISK HEAT MAP ---
 elif st.session_state['current_page'] == "Geographic Risk Heat Map":
     st.markdown("<h1 class='centered-title'>Geographic Risk Heat Map</h1>", unsafe_allow_html=True)
     
-    # Filtering Control Panel Setup
     st.markdown("<div class='section-header'>Filter Operations Control Panel</div>", unsafe_allow_html=True)
     f1, f2, f3, f4 = st.columns(4)
     with f1:
@@ -312,7 +306,6 @@ elif st.session_state['current_page'] == "Geographic Risk Heat Map":
     with f4:
         sel_tenure = st.multiselect("Tenure Group", options=['0-1 Yr', '1-3 Yrs', '3-5 Yrs', '5-10 Yrs', '10+ Yrs'])
 
-    # Apply filters dynamically
     map_df = df.copy()
     if sel_dept: map_df = map_df[map_df['MAIN_GROUP'].isin(sel_dept)]
     if sel_grade: map_df = map_df[map_df['GRADE'].isin(sel_grade)]
@@ -321,7 +314,6 @@ elif st.session_state['current_page'] == "Geographic Risk Heat Map":
 
     st.divider()
     
-    # Layout splits into Map Workspace and State Summary Side Panel
     col_map_canvas, col_side_panel = st.columns([3, 1.2])
     
     with col_side_panel:
@@ -329,7 +321,6 @@ elif st.session_state['current_page'] == "Geographic Risk Heat Map":
         state_options = ['All India'] + sorted([s for s in map_df['State'].unique() if s != 'Other'])
         st.session_state['map_selected_state'] = st.selectbox("Select State Focus View", options=state_options, index=state_options.index(st.session_state['map_selected_state']) if st.session_state['map_selected_state'] in state_options else 0)
         
-        # Aggregate statistics based on selection view focus
         if st.session_state['map_selected_state'] == 'All India':
             focused_df = map_df
             display_title = "All India Summary"
@@ -364,7 +355,6 @@ elif st.session_state['current_page'] == "Geographic Risk Heat Map":
                 st.caption(f"• {c_row['Work_Location']}: {c_row['High_Risk_Pct']:.1f}% High Risk share")
 
     with col_map_canvas:
-        # Build geographic plotting points matrix
         geo_agg = map_df.groupby(['Work_Location', 'State', 'Latitude', 'Longitude']).apply(
             lambda x: pd.Series({
                 'Total_Employees': len(x),
@@ -374,10 +364,8 @@ elif st.session_state['current_page'] == "Geographic Risk Heat Map":
             }), include_groups=False
         ).reset_index()
 
-        # Dynamic risk status tag classification matching guidelines
         geo_agg['Risk_Category'] = geo_agg['High_Risk_Percentage'].apply(classify_revised_risk_tier)
 
-        # Set up coordinates zoom focus vectors
         if st.session_state['map_selected_state'] == 'All India':
             center_lat, center_lon = 22.5, 78.5
             zoom_level = 3.6
@@ -392,14 +380,13 @@ elif st.session_state['current_page'] == "Geographic Risk Heat Map":
                 zoom_level = 3.6
 
         if not plot_df.empty:
-            # Build professional Plotly map layers using smooth color scale mapping sequences
             fig_map = px.scatter_mapbox(
                 plot_df,
                 lat="Latitude",
                 lon="Longitude",
                 size="Total_Employees",
                 color="High_Risk_Percentage",
-                color_continuous_scale=["#28A745", "#FFCC00", "#D7191C"], # Green → Yellow → Red 
+                color_continuous_scale=["#28A745", "#FFCC00", "#D7191C"], 
                 range_color=[0, 100],
                 zoom=zoom_level,
                 center={"lat": center_lat, "lon": center_lon},
@@ -411,7 +398,7 @@ elif st.session_state['current_page'] == "Geographic Risk Heat Map":
                 custom_data=["Total_Employees", "High_Risk_Employees", "High_Risk_Percentage", "Risk_Category"]
             )
 
-            # Define uniform professional tooltip layout configuration strings
+            fig_map.update_shapes(dict(xs=None))
             fig_map.update_traces(
                 hovertemplate="<br>".join([
                     "<b>City: %{hovertext}</b>",
@@ -523,7 +510,7 @@ elif st.session_state['current_page'] == "Employee risk indicator":
 # --- PAGE 4: ER MANAGER PORTAL ---
 elif st.session_state['current_page'] == "ER Manager Portal":
     st.markdown("<h1 class='centered-title'>ER Manager Portal</h1>", unsafe_allow_html=True)
-    
+        
     col_input, col_btn = st.columns([3, 1])
     with col_input:
         input_er_id = st.number_input("Enter ER Manager ID", min_value=0, step=1, value=st.session_state['current_manager_id'] if st.session_state['current_manager_id'] else 0)
