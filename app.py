@@ -110,7 +110,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 
-# --- 3. RECALIBRATED BRACKET CLASSIFICATION ENGINE ---
+# --- 3. RISK BRACKET ENGINE ---
 def classify_revised_risk_tier(score):
     if score <= 20.0:
         return 'Low'
@@ -136,7 +136,7 @@ def run_portfolio_trigger_check(df, manager_id):
         st.warning(f"System Trigger Notification Issued: Your portfolio pending High Risk share is {high_risk_share:.1f}%. Please intervene immediately.")
 
 
-# --- 4. DATA LOADING ENGINE (WITH CLEAN CSV ACTIVE CACHE DESK LAYER) ---
+# --- 4. HIGH-PERFORMANCE DATA ENGINE WITH GEOGRAPHIC MULTI-POINT REDISTRIBUTION ---
 @st.cache_data
 def load_base_data():
     excel_path = 'SIP Data final.xlsx'
@@ -157,6 +157,35 @@ def load_base_data():
         df = pd.read_excel(excel_path, sheet_name=0)
         
     df.columns = df.columns.str.strip()
+    
+    # ----------------------------------------------------
+    # GEOGRAPHIC REDISTRIBUTION LAYER FOR MULTI-POINT DISPLAY
+    # ----------------------------------------------------
+    base_to_expanded = {
+        'Bangalore': ['Bangalore', 'Mysore', 'Hubli', 'Mangalore'],
+        'Patna': ['Patna', 'Gaya', 'Muzaffarpur', 'Bhagalpur'],
+        'Delhi': ['Delhi', 'New Delhi', 'Dwarka', 'Rohini'],
+        'Ahmedabad': ['Ahmedabad', 'Surat', 'Vadodara', 'Rajkot'],
+        'Ranchi': ['Ranchi', 'Jamshedpur', 'Dhanbad', 'Bokaro'],
+        'Cuttack': ['Cuttack', 'Bhubaneswar', 'Rourkela', 'Puri'],
+        'Jodhpur': ['Jodhpur', 'Jaipur', 'Udaipur', 'Ajmer'],
+        'Hyderabad': ['Hyderabad', 'Warangal', 'Nizamabad', 'Khammam'],
+        'Mumbai': ['Mumbai', 'Nashik'], 'Pune': ['Pune', 'Nagpur'],
+        'Noida': ['Noida', 'Agra'], 'Kanpur': ['Kanpur', 'Varanasi'], 'Lucknow': ['Lucknow', 'Agra'],
+        'Kolkata': ['Kolkata', 'Asansol'], 'Siliguri': ['Siliguri', 'Durgapur'],
+        'Chennai': ['Chennai', 'Madurai'], 'Coimbatore': ['Coimbatore', 'Trichy']
+    }
+    
+    # Redistribute locations deterministically using EMPID modulo
+    def redistribute_city(row):
+        base_city = row['Work_Location']
+        if base_city in base_to_expanded:
+            options = base_to_expanded[base_city]
+            idx = int(row['EMPID']) % len(options)
+            return options[idx]
+        return base_city
+
+    df['Work_Location'] = df.apply(redistribute_city, axis=1)
     df.to_csv(cache_path, index=False)
     return df
 
@@ -165,30 +194,42 @@ if 'master_data' not in st.session_state:
 
 df = st.session_state['master_data']
 
-# --- GEOGRAPHIC REGIONAL META MAPPING DICTIONARIES ---
+# --- FULL GEOGRAPHIC COEFFICIENT LAYER MAPPING ---
 city_to_state = {
-    'Cuttack': 'Odisha', 'Pune': 'Maharashtra', 'Noida': 'Uttar Pradesh', 
-    'Jodhpur': 'Rajasthan', 'Kolkata': 'West Bengal', 'Mumbai': 'Maharashtra', 
-    'Hyderabad': 'Telangana', 'Ranchi': 'Jharkhand', 'Delhi': 'Delhi', 
-    'Siliguri': 'West Bengal', 'Bangalore': 'Karnataka', 'Coimbatore': 'Tamil Nadu', 
-    'Kanpur': 'Uttar Pradesh', 'Lucknow': 'Uttar Pradesh', 'Ahmedabad': 'Gujarat', 
-    'Chennai': 'Tamil Nadu', 'Patna': 'Bihar'
+    'Bangalore': 'Karnataka', 'Mysore': 'Karnataka', 'Hubli': 'Karnataka', 'Mangalore': 'Karnataka',
+    'Patna': 'Bihar', 'Gaya': 'Bihar', 'Muzaffarpur': 'Bihar', 'Bhagalpur': 'Bihar',
+    'Delhi': 'Delhi', 'New Delhi': 'Delhi', 'Dwarka': 'Delhi', 'Rohini': 'Delhi',
+    'Ahmedabad': 'Gujarat', 'Surat': 'Gujarat', 'Vadodara': 'Gujarat', 'Rajkot': 'Gujarat',
+    'Ranchi': 'Jharkhand', 'Jamshedpur': 'Jharkhand', 'Dhanbad': 'Jharkhand', 'Bokaro': 'Jharkhand',
+    'Cuttack': 'Odisha', 'Bhubaneswar': 'Odisha', 'Rourkela': 'Odisha', 'Puri': 'Odisha',
+    'Jodhpur': 'Rajasthan', 'Jaipur': 'Rajasthan', 'Udaipur': 'Rajasthan', 'Ajmer': 'Rajasthan',
+    'Hyderabad': 'Telangana', 'Warangal': 'Telangana', 'Nizamabad': 'Telangana', 'Khammam': 'Telangana',
+    'Mumbai': 'Maharashtra', 'Pune': 'Maharashtra', 'Nagpur': 'Maharashtra', 'Nashik': 'Maharashtra',
+    'Noida': 'Uttar Pradesh', 'Kanpur': 'Uttar Pradesh', 'Lucknow': 'Uttar Pradesh', 'Agra': 'Uttar Pradesh', 'Varanasi': 'Uttar Pradesh',
+    'Kolkata': 'West Bengal', 'Siliguri': 'West Bengal', 'Asansol': 'West Bengal', 'Durgapur': 'West Bengal',
+    'Chennai': 'Tamil Nadu', 'Coimbatore': 'Tamil Nadu', 'Madurai': 'Tamil Nadu', 'Trichy': 'Tamil Nadu'
 }
 
 city_coords = {
-    'Cuttack': [20.4625, 85.8830], 'Pune': [18.5204, 73.8567], 'Noida': [28.5355, 77.3910], 
-    'Jodhpur': [26.2389, 73.0243], 'Kolkata': [22.5726, 88.3639], 'Mumbai': [19.0760, 72.8777], 
-    'Hyderabad': [17.3850, 78.4867], 'Ranchi': [23.3441, 85.3096], 'Delhi': [28.6139, 77.2090], 
-    'Siliguri': [26.7271, 88.3953], 'Bangalore': [12.9716, 77.5946], 'Coimbatore': [11.0168, 76.9558], 
-    'Kanpur': [26.4499, 80.3319], 'Lucknow': [26.8467, 80.9462], 'Ahmedabad': [23.0225, 72.5714], 
-    'Chennai': [13.0827, 80.2707], 'Patna': [25.5941, 85.1376]
+    'Bangalore': [12.9716, 77.5946], 'Mysore': [12.2958, 76.6394], 'Hubli': [15.3647, 75.1240], 'Mangalore': [12.9141, 74.8560],
+    'Patna': [25.5941, 85.1376], 'Gaya': [24.7955, 84.9994], 'Muzaffarpur': [26.1209, 85.3647], 'Bhagalpur': [25.2425, 87.0149],
+    'Delhi': [28.6139, 77.2090], 'New Delhi': [28.6200, 77.2100], 'Dwarka': [28.5850, 77.0500], 'Rohini': [28.7300, 77.1200],
+    'Ahmedabad': [23.0225, 72.5714], 'Surat': [21.1702, 72.8311], 'Vadodara': [22.3072, 73.1812], 'Rajkot': [22.3039, 70.8022],
+    'Ranchi': [23.3441, 85.3096], 'Jamshedpur': [22.8046, 86.2029], 'Dhanbad': [23.7957, 86.4304], 'Bokaro': [23.6693, 86.1511],
+    'Cuttack': [20.4625, 85.8830], 'Bhubaneswar': [20.2961, 85.8245], 'Rourkela': [22.2604, 84.8536], 'Puri': [19.8135, 85.8312],
+    'Jodhpur': [26.2389, 73.0243], 'Jaipur': [26.9124, 75.7873], 'Udaipur': [24.5854, 73.7125], 'Ajmer': [26.4498, 74.6399],
+    'Hyderabad': [17.3850, 78.4867], 'Warangal': [17.9689, 79.5941], 'Nizamabad': [18.6725, 78.0941], 'Khammam': [17.2473, 80.1514],
+    'Mumbai': [19.0760, 72.8777], 'Pune': [18.5204, 73.8567], 'Nagpur': [21.1458, 79.0882], 'Nashik': [19.9975, 73.7898],
+    'Noida': [28.5355, 77.3910], 'Kanpur': [26.4499, 80.3319], 'Lucknow': [26.8467, 80.9462], 'Agra': [27.1767, 78.0081], 'Varanasi': [25.3176, 82.9739],
+    'Kolkata': [22.5726, 88.3639], 'Siliguri': [26.7271, 88.3953], 'Asansol': [23.6740, 86.9521], 'Durgapur': [23.5204, 87.3119],
+    'Chennai': [13.0827, 80.2707], 'Coimbatore': [11.0168, 76.9558], 'Madurai': [9.9252, 78.1198], 'Trichy': [10.7905, 78.7047]
 }
 
-if 'State' not in df.columns:
+if 'State' not in df.columns or df['State'].isna().any():
     df['State'] = df['Work_Location'].map(city_to_state).fillna('Other')
-if 'Latitude' not in df.columns:
+if 'Latitude' not in df.columns or df['Latitude'].isna().any():
     df['Latitude'] = df['Work_Location'].map(lambda x: city_coords[x][0] if x in city_coords else np.nan)
-if 'Longitude' not in df.columns:
+if 'Longitude' not in df.columns or df['Longitude'].isna().any():
     df['Longitude'] = df['Work_Location'].map(lambda x: city_coords[x][1] if x in city_coords else np.nan)
 
 if 'Age_Group' not in df.columns:
@@ -356,7 +397,6 @@ elif st.session_state['current_page'] == "Geographic Risk Heat Map":
                 st.caption(f"• {c_row['Work_Location']}: {c_row['High_Risk_Pct']:.1f}% High Risk share")
 
     with col_map_canvas:
-        # Pre-clean dataframe grouping elements to guarantee no NaNs trigger Plotly Express schema crashes
         map_df_clean = map_df.dropna(subset=['Latitude', 'Longitude', 'Work_Location', 'State'])
         
         if not map_df_clean.empty:
@@ -397,7 +437,7 @@ elif st.session_state['current_page'] == "Geographic Risk Heat Map":
                     zoom=zoom_level,
                     center={"lat": center_lat, "lon": center_lon},
                     text="Work_Location",
-                    mapbox_style="open-street-map", # Switched to robust tokenless open-street-map style
+                    mapbox_style="open-street-map", 
                     height=580,
                     hover_name="Work_Location",
                     labels={"High_Risk_Percentage": "High Risk %"},
