@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import plotly.express as px
 import os
 
 # --- 1. CONFIGURATION ---
@@ -109,7 +110,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 
-# --- 3. RISK BRACKET ENGINE ---
+# --- 3. RECALIBRATED BRACKET CLASSIFICATION ENGINE ---
 def classify_revised_risk_tier(score):
     if score <= 20.0:
         return 'Low'
@@ -135,7 +136,7 @@ def run_portfolio_trigger_check(df, manager_id):
         st.warning(f"System Trigger Notification Issued: Your portfolio pending High Risk share is {high_risk_share:.1f}%. Please intervene immediately.")
 
 
-# --- 4. HIGH-PERFORMANCE DATA ENGINE (CSV CACHE LAYER) ---
+# --- 4. DATA LOADING ENGINE (WITH CLEAN CSV ACTIVE CACHE DESK LAYER) ---
 @st.cache_data
 def load_base_data():
     excel_path = 'SIP Data final.xlsx'
@@ -355,71 +356,77 @@ elif st.session_state['current_page'] == "Geographic Risk Heat Map":
                 st.caption(f"• {c_row['Work_Location']}: {c_row['High_Risk_Pct']:.1f}% High Risk share")
 
     with col_map_canvas:
-        geo_agg = map_df.groupby(['Work_Location', 'State', 'Latitude', 'Longitude']).apply(
-            lambda x: pd.Series({
-                'Total_Employees': len(x),
-                'High_Risk_Employees': len(x[x['Risk_Level'] == 'High']),
-                'High_Risk_Percentage': (len(x[x['Risk_Level'] == 'High']) / len(x) * 100),
-                'Average_Risk_Score': x['Attrition_Risk_Percentage'].mean()
-            }), include_groups=False
-        ).reset_index()
+        # Pre-clean dataframe grouping elements to guarantee no NaNs trigger Plotly Express schema crashes
+        map_df_clean = map_df.dropna(subset=['Latitude', 'Longitude', 'Work_Location', 'State'])
+        
+        if not map_df_clean.empty:
+            geo_agg = map_df_clean.groupby(['Work_Location', 'State', 'Latitude', 'Longitude']).apply(
+                lambda x: pd.Series({
+                    'Total_Employees': int(len(x)),
+                    'High_Risk_Employees': int(len(x[x['Risk_Level'] == 'High'])),
+                    'High_Risk_Percentage': float((len(x[x['Risk_Level'] == 'High']) / len(x) * 100)),
+                    'Average_Risk_Score': float(x['Attrition_Risk_Percentage'].mean())
+                }), include_groups=False
+            ).reset_index()
 
-        geo_agg['Risk_Category'] = geo_agg['High_Risk_Percentage'].apply(classify_revised_risk_tier)
+            geo_agg['Risk_Category'] = geo_agg['High_Risk_Percentage'].apply(classify_revised_risk_tier)
 
-        if st.session_state['map_selected_state'] == 'All India':
-            center_lat, center_lon = 22.5, 78.5
-            zoom_level = 3.6
-            plot_df = geo_agg
-        else:
-            plot_df = geo_agg[geo_agg['State'] == st.session_state['map_selected_state']]
-            if not plot_df.empty:
-                center_lat, center_lon = plot_df['Latitude'].mean(), plot_df['Longitude'].mean()
-                zoom_level = 5.5
-            else:
+            if st.session_state['map_selected_state'] == 'All India':
                 center_lat, center_lon = 22.5, 78.5
                 zoom_level = 3.6
+                plot_df = geo_agg
+            else:
+                plot_df = geo_agg[geo_agg['State'] == st.session_state['map_selected_state']]
+                if not plot_df.empty:
+                    center_lat, center_lon = float(plot_df['Latitude'].mean()), float(plot_df['Longitude'].mean())
+                    zoom_level = 5.5
+                else:
+                    center_lat, center_lon = 22.5, 78.5
+                    zoom_level = 3.6
+                    plot_df = geo_agg
 
-        if not plot_df.empty:
-            fig_map = px.scatter_mapbox(
-                plot_df,
-                lat="Latitude",
-                lon="Longitude",
-                size="Total_Employees",
-                color="High_Risk_Percentage",
-                color_continuous_scale=["#28A745", "#FFCC00", "#D7191C"], 
-                range_color=[0, 100],
-                zoom=zoom_level,
-                center={"lat": center_lat, "lon": center_lon},
-                text="Work_Location",
-                mapbox_style="carto-positron",
-                height=580,
-                hover_name="Work_Location",
-                labels={"High_Risk_Percentage": "High Risk %"},
-                custom_data=["Total_Employees", "High_Risk_Employees", "High_Risk_Percentage", "Risk_Category"]
-            )
-
-            fig_map.update_shapes(dict(xs=None))
-            fig_map.update_traces(
-                hovertemplate="<br>".join([
-                    "<b>City: %{hovertext}</b>",
-                    "Total Employees: %{customdata[0]}",
-                    "High Risk Employees: %{customdata[1]}",
-                    "High Risk %: %{customdata[2]:.1f}%",
-                    "Risk Category: %{customdata[3]}"
-                ])
-            )
-
-            fig_map.update_layout(
-                margin={"r":0,"t":0,"l":0,"b":0},
-                coloraxis_colorbar=dict(
-                    title="High Risk %",
-                    thicknessmode="pixels", thickness=15,
-                    lenmode="pixels", len=300,
-                    yanchor="top", y=1,
-                    xanchor="left", x=0.02
+            if not plot_df.empty:
+                fig_map = px.scatter_mapbox(
+                    plot_df,
+                    lat="Latitude",
+                    lon="Longitude",
+                    size="Total_Employees",
+                    color="High_Risk_Percentage",
+                    color_continuous_scale=["#28A745", "#FFCC00", "#D7191C"], 
+                    range_color=[0, 100],
+                    zoom=zoom_level,
+                    center={"lat": center_lat, "lon": center_lon},
+                    text="Work_Location",
+                    mapbox_style="open-street-map", # Switched to robust tokenless open-street-map style
+                    height=580,
+                    hover_name="Work_Location",
+                    labels={"High_Risk_Percentage": "High Risk %"},
+                    custom_data=["Total_Employees", "High_Risk_Employees", "High_Risk_Percentage", "Risk_Category"]
                 )
-            )
-            st.plotly_chart(fig_map, use_container_width=True)
+
+                fig_map.update_traces(
+                    hovertemplate="<br>".join([
+                        "<b>City: %{hovertext}</b>",
+                        "Total Employees: %{customdata[0]}",
+                        "High Risk Employees: %{customdata[1]}",
+                        "High Risk %: %{customdata[2]:.1f}%",
+                        "Risk Category: %{customdata[3]}"
+                    ])
+                )
+
+                fig_map.update_layout(
+                    margin={"r":0,"t":0,"l":0,"b":0},
+                    coloraxis_colorbar=dict(
+                        title="High Risk %",
+                        thicknessmode="pixels", thickness=15,
+                        lenmode="pixels", len=300,
+                        yanchor="top", y=1,
+                        xanchor="left", x=0.02
+                    )
+                )
+                st.plotly_chart(fig_map, use_container_width=True)
+            else:
+                st.info("No matching geographic records available for the specified criteria configuration.")
         else:
             st.info("No matching geographic records available for the specified criteria configuration.")
 
