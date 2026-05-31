@@ -296,16 +296,16 @@ if st.session_state['current_page'] == "Zone wise turnover prediction":
 elif st.session_state['current_page'] == "Geographic Risk Heat Map":
     st.markdown("<h1 class='centered-title'>Geographic Risk Heat Map</h1>", unsafe_allow_html=True)
     
-    st.markdown("<div class='section-header'>Filter Operations Control Panel</div>", unsafe_allow_html=True)
+    st.markdown("<div class='section-header'>Apply Filter</div>", unsafe_allow_html=True)
     f1, f2, f3, f4 = st.columns(4)
     with f1:
-        sel_dept = st.multiselect("Department", options=sorted(df['MAIN_GROUP'].dropna().unique().tolist()))
+        sel_dept = st.multiselect("Group", options=sorted(df['MAIN_GROUP'].dropna().unique().tolist()))
     with f2:
-        sel_grade = st.multiselect("Grade / Band", options=sorted(df['GRADE'].dropna().unique().tolist()))
+        sel_grade = st.multiselect("Grade", options=sorted(df['GRADE'].dropna().unique().tolist()))
     with f3:
         sel_age = st.multiselect("Age Group", options=['Under 25', '25-29', '30-39', '40-49', '50 and Above'])
     with f4:
-        sel_tenure = st.multiselect("Tenure Group", options=['0-1 Yr', '1-3 Yrs', '3-5 Yrs', '5-10 Yrs', '10+ Yrs'])
+        sel_tenure = st.multiselect("Tenure", options=['0-1 Yr', '1-3 Yrs', '3-5 Yrs', '5-10 Yrs', '10+ Yrs'])
 
     map_df = df.copy()
     if sel_dept: map_df = map_df[map_df['MAIN_GROUP'].isin(sel_dept)]
@@ -318,9 +318,9 @@ elif st.session_state['current_page'] == "Geographic Risk Heat Map":
     col_map_canvas, col_side_panel = st.columns([3, 1.2])
     
     with col_side_panel:
-        st.markdown("<div class='section-header'>Regional Navigation Desk</div>", unsafe_allow_html=True)
+        st.markdown("<div class='section-header'>State-wise Navigation</div>", unsafe_allow_html=True)
         state_options = ['All India'] + sorted([s for s in map_df['State'].unique() if s != 'Other'])
-        st.session_state['map_selected_state'] = st.selectbox("Select State Focus View", options=state_options, index=state_options.index(st.session_state['map_selected_state']) if st.session_state['map_selected_state'] in state_options else 0)
+        st.session_state['map_selected_state'] = st.selectbox("Select State", options=state_options, index=state_options.index(st.session_state['map_selected_state']) if st.session_state['map_selected_state'] in state_options else 0)
         
         if st.session_state['map_selected_state'] == 'All India':
             focused_df = map_df
