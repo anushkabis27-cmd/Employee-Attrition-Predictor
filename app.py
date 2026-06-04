@@ -139,7 +139,6 @@ def run_portfolio_trigger_check(df, manager_id):
 # --- 4. DATA LOADING ENGINE (WITH CLEAN CSV ACTIVE CACHE DESK LAYER) ---
 @st.cache_data
 def load_base_data():
-    excel_path = 'SIP Data final.xlsx'
     cache_path = 'SIP Data final_active_cache.csv'
     
     if os.path.exists(cache_path):
@@ -147,23 +146,24 @@ def load_base_data():
         df.columns = df.columns.str.strip()
         return df
         
-    if not os.path.exists(excel_path):
-        st.error(f"Required Excel spreadsheet asset '{excel_path}' could not be found in the current directory.")
-        st.stop()
-        
-    try:
-        df = pd.read_excel(excel_path, sheet_name='Master Attrition Data')
-    except Exception:
-        df = pd.read_excel(excel_path, sheet_name=0)
-        
-    df.columns = df.columns.str.strip()
-    df.to_csv(cache_path, index=False)
-    return df
+    fallback_files = ['Attrition_Updated_with_ER_Managers.csv', 'Attrition_Final_Production_v8_Final_Analysis.xlsx - Sheet1_Dataset.csv']
+    for file in fallback_files:
+        if os.path.exists(file):
+            df = pd.read_csv(file)
+            df.columns = df.columns.str.strip()
+            df.to_csv(cache_path, index=False)
+            return df
+            
+    st.error("Required dataset asset could not be found in the current working directory.")
+    st.stop()
 
 if 'master_data' not in st.session_state:
     st.session_state['master_data'] = load_base_data()
 
 df = st.session_state['master_data']
+
+if 'Intervention_Status' not in df.columns:
+    df['Intervention_Status'] = 'Not Started'
 
 # --- GEOGRAPHIC REGIONAL META MAPPING DICTIONARIES ---
 city_to_state = {
@@ -199,7 +199,8 @@ if 'Tenure_Group' not in df.columns:
 # App Navigation Variables
 if 'view_mode' not in st.session_state: st.session_state['view_mode'] = 'Percentage'
 if 'risk_filter' not in st.session_state: st.session_state['risk_filter'] = 'High'
-if 'current_page' not in st.session_state: st.session_state['current_page'] = "Zone wise turnover prediction"
+# UPDATED APP INITIALIZATION ROOT TO MATCH REPORT VALUE PERFECTLY
+if 'current_page' not in st.session_state: st.session_state['current_page'] = "Zone wise Risk Summary"
 if 'selected_empid' not in st.session_state: st.session_state['selected_empid'] = None
 if 'remarks_empid' not in st.session_state: st.session_state['remarks_empid'] = None
 if 'current_manager_id' not in st.session_state: st.session_state['current_manager_id'] = None
@@ -210,8 +211,9 @@ if 'map_selected_state' not in st.session_state: st.session_state['map_selected_
 # --- 5. SIDEBAR NAVIGATION CONTROLLER ---
 st.sidebar.title("iRETAIN")
 st.sidebar.markdown("---")
+# RENAMED LABELS TO GUARANTEE "Zone wise Risk Summary" PAIRS SEAMLESSLY
 page_options = [
-    "Zone wise turnover prediction", 
+    "Zone wise Risk Summary", 
     "Geographic Risk Heat Map", 
     "Employee risk indicator", 
     "ER Manager Portal", 
@@ -233,7 +235,6 @@ if selected_sidebar != st.session_state['current_page']:
 
 
 # --- PAGE 1: ZONE WISE RISK SUMMARY ---
-# FIXED MATCHING STRING FROM "Zone wise Risk Summary" -> "Zone wise Risk Summary"
 if st.session_state['current_page'] == "Zone wise Risk Summary":
     st.markdown("<h1 class='centered-title'>Zone-Wise Risk Summary</h1>", unsafe_allow_html=True)
     col_content, col_legend = st.columns([4, 1.2])
@@ -260,23 +261,36 @@ if st.session_state['current_page'] == "Zone wise Risk Summary":
             with grid_rows[i // 2][i % 2]:
                 st.markdown(f"<div class='quadrant-box'><div class='zone-header'>{zone}</div><div class='chart-container'>", unsafe_allow_html=True)
                 zone_data = df[(df['ZONE'].str.capitalize() == zone) & (df['Risk_Level'] == st.session_state['risk_filter'])]
+                
                 if not zone_data.empty:
                     counts = zone_data['MAIN_GROUP'].value_counts()
                     total_in_dept = df[df['ZONE'].str.capitalize() == zone]['MAIN_GROUP'].value_counts()
-                    percentages = (counts / total_in_dept * 100).fillna(0)
+                    percentages = (counts / total_in_dept * 100).reindex(counts.index).fillna(0)
+                    
                     fig, ax = plt.subplots(figsize=(5, 3))
-                    bars = ax.bar(counts.index, counts.values, color=current_color)
-                    max_v = max(counts.values) * 1.35 if not counts.empty else 10
-                    ax.set_ylim(0, max_v)
-                    for bar, label_val in zip(bars, percentages.values if st.session_state['view_mode'] == 'Percentage' else counts.values):
-                        height = bar.get_height()
-                        label = f"{label_val:.1f}%" if st.session_state['view_mode'] == 'Percentage' else f"{int(label_val)}"
-                        ax.text(bar.get_x() + bar.get_width()/2., height + (max_v * 0.02), label, ha='center', va='bottom', fontsize=9, fontweight='bold')
+                    
+                    if st.session_state['view_mode'] == 'Percentage':
+                        bars = ax.bar(percentages.index, percentages.values, color=current_color)
+                        max_v = max(percentages.values) * 1.35 if not percentages.empty else 10
+                        ax.set_ylim(0, max_v)
+                        for bar, label_val in zip(bars, percentages.values):
+                            height = bar.get_height()
+                            ax.text(bar.get_x() + bar.get_width()/2., height + (max_v * 0.02), f"{label_val:.1f}%", ha='center', va='bottom', fontsize=9, fontweight='bold')
+                        ax.set_ylabel("Percentage (%)", fontsize=9)
+                    else:
+                        bars = ax.bar(counts.index, counts.values, color=current_color)
+                        max_v = max(counts.values) * 1.35 if not counts.empty else 10
+                        ax.set_ylim(0, max_v)
+                        for bar, label_val in zip(bars, counts.values):
+                            height = bar.get_height()
+                            ax.text(bar.get_x() + bar.get_width()/2., height + (max_v * 0.02), f"{int(label_val)}", ha='center', va='bottom', fontsize=9, fontweight='bold')
+                        ax.set_ylabel("Count", fontsize=9)
+                        
                     ax.set_facecolor('#FFFFFF')
                     ax.tick_params(axis='x', rotation=45, labelsize=8)
-                    ax.set_ylabel("Count", fontsize=9)
                     st.pyplot(fig)
-                else: st.write("No data found for this selection.")
+                else: 
+                    st.write("No data found for this selection.")
                 st.markdown("</div></div>", unsafe_allow_html=True)
 
     with col_legend:
@@ -645,7 +659,6 @@ elif st.session_state['current_page'] == "Feedback Form":
                     
                     text_comments = st.text_area("Comments", placeholder="Enter any other remarks ...")
                     
-                    # FIXED STABLE REFERENCE LOOKUP FOR SUBMIT BUTTON
                     submit_form = st.form_submit_button("Submit")
                     
                     if submit_form:
