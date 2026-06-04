@@ -233,7 +233,7 @@ if selected_sidebar != st.session_state['current_page']:
 
 
 # --- PAGE 1: ZONE WISE RISK SUMMARY ---
-if st.session_state['current_page'] == "Zone wise turnover prediction":
+if st.session_state['current_page'] == "Zone wise Risk Summary":
     st.markdown("<h1 class='centered-title'>Zone-Wise Risk Summary</h1>", unsafe_allow_html=True)
     col_content, col_legend = st.columns([4, 1.2])
 
