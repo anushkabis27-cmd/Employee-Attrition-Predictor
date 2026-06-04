@@ -356,7 +356,6 @@ elif st.session_state['current_page'] == "Geographic Risk Heat Map":
                 st.caption(f"• {c_row['Work_Location']}: {c_row['High_Risk_Pct']:.1f}% High Risk share")
 
     with col_map_canvas:
-        # Pre-clean dataframe grouping elements to guarantee no NaNs trigger Plotly Express schema crashes
         map_df_clean = map_df.dropna(subset=['Latitude', 'Longitude', 'Work_Location', 'State'])
         
         if not map_df_clean.empty:
@@ -397,7 +396,7 @@ elif st.session_state['current_page'] == "Geographic Risk Heat Map":
                     zoom=zoom_level,
                     center={"lat": center_lat, "lon": center_lon},
                     text="Work_Location",
-                    mapbox_style="open-street-map", # Switched to robust tokenless open-street-map style
+                    mapbox_style="open-street-map",
                     height=580,
                     hover_name="Work_Location",
                     labels={"High_Risk_Percentage": "High Risk %"},
@@ -603,12 +602,14 @@ elif st.session_state['current_page'] == "Feedback Form":
     else:
         target_id = st.session_state['remarks_empid']
         
+        # FIXED FLOW: Show success message on this page FIRST. Do not auto-redirect out.
         if f"success_banner_{target_id}" in st.session_state and st.session_state[f"success_banner_{target_id}"]:
             st.success(st.session_state[f"success_banner_{target_id}"])
             
-            col_back, _ = st.columns([2.0, 3.0])
+            col_back, _ = st.columns([2.5, 3.0])
             with col_back:
                 if st.button("Return to ER Manager Portal Workspace"):
+                    # Clear session keys cleanly upon manual confirmation exit
                     st.session_state[f"success_banner_{target_id}"] = None
                     st.session_state['remarks_empid'] = None
                     st.session_state['current_page'] = "ER Manager Portal"
@@ -645,7 +646,7 @@ elif st.session_state['current_page'] == "Feedback Form":
                     
                     text_comments = st.text_area("Comments", placeholder="Enter any other remarks ...")
                     
-                    submit_form = st.form_submit_button("Submit")
+                    submit_form = st.st_form_submit_button if hasattr(st, 'st_form_submit_button') else st.form_submit_button("Submit")
                     
                     if submit_form:
                         weighted_score = (
@@ -674,19 +675,22 @@ elif st.session_state['current_page'] == "Feedback Form":
                         
                         risk_delta = adjusted_risk - base_pct
                         if risk_delta < 0:
-                            change_msg = f"decreased by {abs(risk_delta):.2f}%"
+                            change_msg = f"decreased by {abs(risk_delta):.2f}% (New Risk Score: {adjusted_risk:.1f}%)"
                         elif risk_delta > 0:
-                            change_msg = f"increased by {risk_delta:.2f}%"
+                            change_msg = f"increased by {risk_delta:.2f}% (New Risk Score: {adjusted_risk:.1f}%)"
                         else:
-                            change_msg = "remained unchanged"
+                            change_msg = f"remained unchanged ({adjusted_risk:.1f}%)"
                         
+                        # Apply mutations directly to session state tracking
                         st.session_state['master_data'].loc[st.session_state['master_data']['EMPID'] == target_id, 'Attrition_Risk_Percentage'] = adjusted_risk
                         st.session_state['master_data'].loc[st.session_state['master_data']['EMPID'] == target_id, 'Risk_Level'] = adjusted_tier
                         st.session_state['master_data'].loc[st.session_state['master_data']['EMPID'] == target_id, 'Intervention_Status'] = status_selection
                         
+                        # Save back updates to database layer disk
                         st.session_state['master_data'].to_csv('SIP Data final_active_cache.csv', index=False)
                         
-                        st.session_state[f"success_banner_{target_id}"] = f"Feedback submitted and successfully removed from pending queue. The risk percentage of Emp ID {target_id} {change_msg}."
+                        # Log success configuration message and trigger local rerun to lock state onto form display loop
+                        st.session_state[f"success_banner_{target_id}"] = f"Feedback submitted successfully! Attrition risk calculation for Employee ID {target_id} has {change_msg}."
                         st.rerun()
             else:
                 st.error("Error matching requested employee references.")
