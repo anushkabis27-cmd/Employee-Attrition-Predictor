@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import plotly.express as px
+import json
 import os
 
 # --- 1. CONFIGURATION ---
@@ -140,7 +141,6 @@ def run_portfolio_trigger_check(df, manager_id):
 @st.cache_data
 def load_base_data():
     cache_path = 'SIP Data final_active_cache.csv'
-    
     if os.path.exists(cache_path):
         df = pd.read_csv(cache_path)
         df.columns = df.columns.str.strip()
@@ -175,21 +175,8 @@ city_to_state = {
     'Chennai': 'Tamil Nadu', 'Patna': 'Bihar'
 }
 
-city_coords = {
-    'Cuttack': [20.4625, 85.8830], 'Pune': [18.5204, 73.8567], 'Noida': [28.5355, 77.3910], 
-    'Jodhpur': [26.2389, 73.0243], 'Kolkata': [22.5726, 88.3639], 'Mumbai': [19.0760, 72.8777], 
-    'Hyderabad': [17.3850, 78.4867], 'Ranchi': [23.3441, 85.3096], 'Delhi': [28.6139, 77.2090], 
-    'Siliguri': [26.7271, 88.3953], 'Bangalore': [12.9716, 77.5946], 'Coimbatore': [11.0168, 76.9558], 
-    'Kanpur': [26.4499, 80.3319], 'Lucknow': [26.8467, 80.9462], 'Ahmedabad': [23.0225, 72.5714], 
-    'Chennai': [13.0827, 80.2707], 'Patna': [25.5941, 85.1376]
-}
-
 if 'State' not in df.columns:
     df['State'] = df['Work_Location'].map(city_to_state).fillna('Other')
-if 'Latitude' not in df.columns:
-    df['Latitude'] = df['Work_Location'].map(lambda x: city_coords[x][0] if x in city_coords else np.nan)
-if 'Longitude' not in df.columns:
-    df['Longitude'] = df['Work_Location'].map(lambda x: city_coords[x][1] if x in city_coords else np.nan)
 
 if 'Age_Group' not in df.columns:
     df['Age_Group'] = pd.cut(df['AGE'], bins=[0, 24, 29, 39, 49, 100], labels=['Under 25', '25-29', '30-39', '40-49', '50 and Above'])
@@ -199,7 +186,6 @@ if 'Tenure_Group' not in df.columns:
 # App Navigation Variables
 if 'view_mode' not in st.session_state: st.session_state['view_mode'] = 'Percentage'
 if 'risk_filter' not in st.session_state: st.session_state['risk_filter'] = 'High'
-# UPDATED APP INITIALIZATION ROOT TO MATCH REPORT VALUE PERFECTLY
 if 'current_page' not in st.session_state: st.session_state['current_page'] = "Zone wise Risk Summary"
 if 'selected_empid' not in st.session_state: st.session_state['selected_empid'] = None
 if 'remarks_empid' not in st.session_state: st.session_state['remarks_empid'] = None
@@ -211,7 +197,6 @@ if 'map_selected_state' not in st.session_state: st.session_state['map_selected_
 # --- 5. SIDEBAR NAVIGATION CONTROLLER ---
 st.sidebar.title("iRETAIN")
 st.sidebar.markdown("---")
-# RENAMED LABELS TO GUARANTEE "Zone wise Risk Summary" PAIRS SEAMLESSLY
 page_options = [
     "Zone wise Risk Summary", 
     "Geographic Risk Heat Map", 
@@ -307,7 +292,7 @@ if st.session_state['current_page'] == "Zone wise Risk Summary":
         st.markdown('</div>', unsafe_allow_html=True)
 
 
-# --- PAGE 2: GEOGRAPHIC RISK HEAT MAP ---
+# --- PAGE 2: GEOGRAPHIC RISK HEAT MAP (UPDATED TO CHOROPLETH SHADING) ---
 elif st.session_state['current_page'] == "Geographic Risk Heat Map":
     st.markdown("<h1 class='centered-title'>Geographic Risk Heat Map</h1>", unsafe_allow_html=True)
     
@@ -359,90 +344,69 @@ elif st.session_state['current_page'] == "Geographic Risk Heat Map":
         </div>
         """, unsafe_allow_html=True)
 
-        if st.session_state['map_selected_state'] != 'All India' and s_total > 0:
-            st.markdown("##### Top Highest-Risk Cities")
-            city_metrics = focused_df.groupby('Work_Location').apply(
-                lambda x: pd.Series({
-                    'High_Risk_Pct': (len(x[x['Risk_Level'] == 'High']) / len(x) * 100)
-                }), include_groups=False
-            ).reset_index().sort_values(by='High_Risk_Pct', ascending=False)
-            
-            for idx, c_row in city_metrics.head(5).iterrows():
-                st.caption(f"• {c_row['Work_Location']}: {c_row['High_Risk_Pct']:.1f}% High Risk share")
-
     with col_map_canvas:
-        map_df_clean = map_df.dropna(subset=['Latitude', 'Longitude', 'Work_Location', 'State'])
+        # Aggregate the matching filtered metrics up to the State layer for continuous choropleth mapping
+        state_agg = map_df.groupby('State').apply(
+            lambda x: pd.Series({
+                'Total_Employees': int(len(x)),
+                'High_Risk_Employees': int(len(x[x['Risk_Level'] == 'High'])),
+                'High_Risk_Percentage': float((len(x[x['Risk_Level'] == 'High']) / len(x) * 100)) if len(x) > 0 else 0.0,
+                'Average_Risk_Score': float(x['Attrition_Risk_Percentage'].mean()) if len(x) > 0 else 0.0
+            }), include_groups=False
+        ).reset_index()
+
+        # Token-free fallback Indian State boundaries JSON configuration layer
+        india_geojson_url = "https://raw.githubusercontent.com/Anujwit/India-State-GeoJSON/master/India_State_Boundary.json"
         
-        if not map_df_clean.empty:
-            geo_agg = map_df_clean.groupby(['Work_Location', 'State', 'Latitude', 'Longitude']).apply(
-                lambda x: pd.Series({
-                    'Total_Employees': int(len(x)),
-                    'High_Risk_Employees': int(len(x[x['Risk_Level'] == 'High'])),
-                    'High_Risk_Percentage': float((len(x[x['Risk_Level'] == 'High']) / len(x) * 100)),
-                    'Average_Risk_Score': float(x['Attrition_Risk_Percentage'].mean())
-                }), include_groups=False
-            ).reset_index()
+        # Filter map target to highlight selected region or display standard national layout
+        if st.session_state['map_selected_state'] != 'All India':
+            state_agg = state_agg[state_agg['State'] == st.session_state['map_selected_state']]
 
-            geo_agg['Risk_Category'] = geo_agg['High_Risk_Percentage'].apply(classify_revised_risk_tier)
+        if not state_agg.empty:
+            fig_map = px.choropleth(
+                state_agg,
+                geojson=india_geojson_url,
+                locations="State",
+                featureidkey="properties.NAME_1",  # Maps directly to standard GeoJSON name structures
+                color="High_Risk_Percentage",
+                color_continuous_scale=["#28A745", "#FFCC00", "#D7191C"],
+                range_color=[0, 100],
+                scope="asia",
+                height=600,
+                labels={"High_Risk_Percentage": "High Risk %"},
+                custom_data=["Total_Employees", "High_Risk_Employees", "Average_Risk_Score"]
+            )
 
-            if st.session_state['map_selected_state'] == 'All India':
-                center_lat, center_lon = 22.5, 78.5
-                zoom_level = 3.6
-                plot_df = geo_agg
-            else:
-                plot_df = geo_agg[geo_agg['State'] == st.session_state['map_selected_state']]
-                if not plot_df.empty:
-                    center_lat, center_lon = float(plot_df['Latitude'].mean()), float(plot_df['Longitude'].mean())
-                    zoom_level = 5.5
-                else:
-                    center_lat, center_lon = 22.5, 78.5
-                    zoom_level = 3.6
-                    plot_df = geo_agg
+            # Center coordinates focused over Indian subcontinent configuration boundaries
+            fig_map.update_geos(
+                center={"lat": 22.5, "lon": 78.5},
+                projection_scale=4.2,
+                visible=False
+            )
 
-            if not plot_df.empty:
-                fig_map = px.scatter_mapbox(
-                    plot_df,
-                    lat="Latitude",
-                    lon="Longitude",
-                    size="Total_Employees",
-                    color="High_Risk_Percentage",
-                    color_continuous_scale=["#28A745", "#FFCC00", "#D7191C"], 
-                    range_color=[0, 100],
-                    zoom=zoom_level,
-                    center={"lat": center_lat, "lon": center_lon},
-                    text="Work_Location",
-                    mapbox_style="open-street-map",
-                    height=580,
-                    hover_name="Work_Location",
-                    labels={"High_Risk_Percentage": "High Risk %"},
-                    custom_data=["Total_Employees", "High_Risk_Employees", "High_Risk_Percentage", "Risk_Category"]
+            fig_map.update_traces(
+                hovertemplate="<br>".join([
+                    "<b>State: %{location}</b>",
+                    "Total Headcount: %{customdata[0]}",
+                    "High Risk Employees: %{customdata[1]}",
+                    "High Risk share: %{color:.1f}%",
+                    "Average Risk Score: %{customdata[2]:.1f}%"
+                ])
+            )
+
+            fig_map.update_layout(
+                margin={"r":0,"t":0,"l":0,"b":0},
+                coloraxis_colorbar=dict(
+                    title="High Risk %",
+                    thicknessmode="pixels", thickness=15,
+                    lenmode="pixels", len=300,
+                    yanchor="top", y=1,
+                    xanchor="left", x=0.02
                 )
-
-                fig_map.update_traces(
-                    hovertemplate="<br>".join([
-                        "<b>City: %{hovertext}</b>",
-                        "Total Employees: %{customdata[0]}",
-                        "High Risk Employees: %{customdata[1]}",
-                        "High Risk %: %{customdata[2]:.1f}%",
-                        "Risk Category: %{customdata[3]}"
-                    ])
-                )
-
-                fig_map.update_layout(
-                    margin={"r":0,"t":0,"l":0,"b":0},
-                    coloraxis_colorbar=dict(
-                        title="High Risk %",
-                        thicknessmode="pixels", thickness=15,
-                        lenmode="pixels", len=300,
-                        yanchor="top", y=1,
-                        xanchor="left", x=0.02
-                    )
-                )
-                st.plotly_chart(fig_map, use_container_width=True)
-            else:
-                st.info("No matching geographic records available for the specified criteria configuration.")
+            )
+            st.plotly_chart(fig_map, use_container_width=True)
         else:
-            st.info("No matching geographic records available for the specified criteria configuration.")
+            st.info("No matching geographic state data found for the active criteria selection.")
 
 
 # --- PAGE 3: EMPLOYEE RISK INDICATOR ---
