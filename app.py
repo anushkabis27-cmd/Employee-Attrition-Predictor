@@ -233,7 +233,8 @@ if selected_sidebar != st.session_state['current_page']:
 
 
 # --- PAGE 1: ZONE WISE RISK SUMMARY ---
-if st.session_state['current_page'] == "Zone wise Risk Summary":
+# FIXED MATCHING STRING FROM "Zone wise Risk Summary" -> "Zone wise turnover prediction"
+if st.session_state['current_page'] == "Zone wise turnover prediction":
     st.markdown("<h1 class='centered-title'>Zone-Wise Risk Summary</h1>", unsafe_allow_html=True)
     col_content, col_legend = st.columns([4, 1.2])
 
@@ -602,14 +603,12 @@ elif st.session_state['current_page'] == "Feedback Form":
     else:
         target_id = st.session_state['remarks_empid']
         
-        # FIXED FLOW: Show success message on this page FIRST. Do not auto-redirect out.
         if f"success_banner_{target_id}" in st.session_state and st.session_state[f"success_banner_{target_id}"]:
             st.success(st.session_state[f"success_banner_{target_id}"])
             
             col_back, _ = st.columns([2.5, 3.0])
             with col_back:
                 if st.button("Return to ER Manager Portal Workspace"):
-                    # Clear session keys cleanly upon manual confirmation exit
                     st.session_state[f"success_banner_{target_id}"] = None
                     st.session_state['remarks_empid'] = None
                     st.session_state['current_page'] = "ER Manager Portal"
@@ -646,7 +645,8 @@ elif st.session_state['current_page'] == "Feedback Form":
                     
                     text_comments = st.text_area("Comments", placeholder="Enter any other remarks ...")
                     
-                    submit_form = st.st_form_submit_button if hasattr(st, 'st_form_submit_button') else st.form_submit_button("Submit")
+                    # FIXED STABLE REFERENCE LOOKUP FOR SUBMIT BUTTON
+                    submit_form = st.form_submit_button("Submit")
                     
                     if submit_form:
                         weighted_score = (
@@ -681,15 +681,12 @@ elif st.session_state['current_page'] == "Feedback Form":
                         else:
                             change_msg = f"remained unchanged ({adjusted_risk:.1f}%)"
                         
-                        # Apply mutations directly to session state tracking
                         st.session_state['master_data'].loc[st.session_state['master_data']['EMPID'] == target_id, 'Attrition_Risk_Percentage'] = adjusted_risk
                         st.session_state['master_data'].loc[st.session_state['master_data']['EMPID'] == target_id, 'Risk_Level'] = adjusted_tier
                         st.session_state['master_data'].loc[st.session_state['master_data']['EMPID'] == target_id, 'Intervention_Status'] = status_selection
                         
-                        # Save back updates to database layer disk
                         st.session_state['master_data'].to_csv('SIP Data final_active_cache.csv', index=False)
                         
-                        # Log success configuration message and trigger local rerun to lock state onto form display loop
                         st.session_state[f"success_banner_{target_id}"] = f"Feedback submitted successfully! Attrition risk calculation for Employee ID {target_id} has {change_msg}."
                         st.rerun()
             else:
