@@ -490,10 +490,10 @@ elif st.session_state['current_page'] == "Employee risk indicator":
                 elif level == 'High':
                     st.write("• Urgent Action Needed: Immediate 1:1 session with ER Manager.")
                     st.write("• Discuss career aspirations & growth expectations within organization.")
-                    st.write("• Map short-term milestones, internal recognition hooks, and upskilling goals.")
-                    st.write("• Explore structural paths like branch transfers or flexible arrangements to handle travel strain.")
+                    st.write("• Explore transfers to handle distance from home strain.")
                 elif level == 'Medium':
-                    st.write("• Engage in career path alignment discussions.")
+                    st.write("• Conduct a discussion focusing on the employee's professional experience and role satisfaction.")
+                    st.write("• Document any concerns and gather feedback.")
                 else: 
                     st.write("• Maintain standard contact & regular checkins.")
                 st.markdown("</div>", unsafe_allow_html=True)
