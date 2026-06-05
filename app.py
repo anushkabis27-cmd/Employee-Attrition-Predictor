@@ -136,7 +136,7 @@ def run_portfolio_trigger_check(df, manager_id):
         st.warning(f"System Trigger Notification Issued: Your portfolio pending High Risk share is {high_risk_share:.1f}%. Please intervene immediately.")
 
 
-# --- 4. DATA LOADING ENGINE (WITH MULTI-ENCODING FALLBACK DESK LAYER) ---
+# --- 4. DATA LOADING ENGINE (WITH CLEAN MULTI-ENCODING & EXCEL CACHE LAYER) ---
 @st.cache_data
 def load_base_data():
     cache_path = 'SIP Data final_active_cache.csv'
@@ -323,7 +323,7 @@ if st.session_state['current_page'] == "Zone wise Risk Summary":
         st.markdown('</div>', unsafe_allow_html=True)
 
 
-# --- PAGE 2: GEOGRAPHIC RISK HEAT MAP (CLEAN STANDALONE VECTORIZED STYLE) ---
+# --- PAGE 2: GEOGRAPHIC RISK HEAT MAP (VECTORIZED DASHBOARD STYLE) ---
 elif st.session_state['current_page'] == "Geographic Risk Heat Map":
     st.markdown("<h1 class='centered-title'>Geographic Risk Heat Map</h1>", unsafe_allow_html=True)
     
@@ -375,12 +375,22 @@ elif st.session_state['current_page'] == "Geographic Risk Heat Map":
         </div>
         """, unsafe_allow_html=True)
 
+        if st.session_state['map_selected_state'] != 'All India' and s_total > 0:
+            st.markdown("##### Top Highest-Risk Cities")
+            city_metrics = focused_df.groupby('Work_Location').apply(
+                lambda x: pd.Series({
+                    'High_Risk_Pct': (len(x[x['Risk_Level'] == 'High']) / len(x) * 100)
+                }), include_groups=False
+            ).reset_index().sort_values(by='High_Risk_Pct', ascending=False)
+            
+            for idx, c_row in city_metrics.head(5).iterrows():
+                st.caption(f"• {c_row['Work_Location']}: {c_row['High_Risk_Pct']:.1f}% High Risk share")
+
     with col_map_canvas:
-        # High-definition boundary repository URL mapping India geometry
         india_geojson_url = "https://gist.githubusercontent.com/jbrobst/56c13bb3593922e8d1412f2d507f05e9/raw/4543cbac5c2a715a2d3574773447552272a7ec0f/india_states.geojson"
         
         if st.session_state['map_selected_state'] == 'All India':
-            # Complete dataset containing diverse state entries to mimic the sample chart reference perfectly
+            # Complete dataset containing diverse state entries to mimic presentation mockups perfectly
             mock_data = {
                 'State': [
                     'Uttar Pradesh', 'Tamil Nadu', 'West Bengal', 'Maharashtra', 'Odisha', 
@@ -406,21 +416,20 @@ elif st.session_state['current_page'] == "Geographic Risk Heat Map":
             plot_df = state_agg[state_agg['State'] == st.session_state['map_selected_state']]
 
         if not plot_df.empty:
-            # FIXED MECHANISM: Replaced mapbox layout with pure px.choropleth to remove street layout and force a clean graphic look
+            # Replaced mapbox layout with pure px.choropleth to remove baseline street maps and force a stylized flat mockup
             fig_map = px.choropleth(
                 plot_df,
                 geojson=india_geojson_url,
                 locations="State",
                 featureidkey="properties.ST_NM", 
                 color="High_Risk_Percentage",
-                color_continuous_scale=["#28A745", "#FFCC00", "#D7191C"], # Continuous gradient matching the reference image scale
+                color_continuous_scale=["#28A745", "#FFCC00", "#D7191C"], 
                 range_color=[0, 100],
                 height=650,
                 labels={"High_Risk_Percentage": "High Risk %"},
                 custom_data=["Total_Employees", "High_Risk_Employees", "Average_Risk_Score"]
             )
 
-            # Enforces explicit country boundaries, fits projection, and creates a stylized background tint matching the image template
             fig_map.update_geos(
                 fitbounds="locations",
                 visible=False,
@@ -432,7 +441,7 @@ elif st.session_state['current_page'] == "Geographic Risk Heat Map":
 
             fig_map.update_traces(
                 marker_line_width=1.2,
-                marker_line_color="#FFFFFF", # Explicit state outline separators
+                marker_line_color="#FFFFFF", 
                 hovertemplate="<br>".join([
                     "<b>State: %{location}</b>",
                     "Total Headcount: %{customdata[0]}",
@@ -454,7 +463,7 @@ elif st.session_state['current_page'] == "Geographic Risk Heat Map":
             )
             st.plotly_chart(fig_map, use_container_width=True)
         else:
-            st.info("No matching geographic state data found for the active criteria selection.")
+            st.info("No matching geographic records available for the specified criteria configuration.")
 
 
 # --- PAGE 3: EMPLOYEE RISK INDICATOR ---
