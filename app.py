@@ -3,7 +3,6 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import plotly.express as px
-import json
 import os
 
 # --- 1. CONFIGURATION ---
@@ -137,22 +136,45 @@ def run_portfolio_trigger_check(df, manager_id):
         st.warning(f"System Trigger Notification Issued: Your portfolio pending High Risk share is {high_risk_share:.1f}%. Please intervene immediately.")
 
 
-# --- 4. DATA LOADING ENGINE ---
+# --- 4. DATA LOADING ENGINE (WITH CLEAN CSV ACTIVE CACHE DESK LAYER) ---
 @st.cache_data
 def load_base_data():
     cache_path = 'SIP Data final_active_cache.csv'
+    excel_path = 'SIP Data final.xlsx'
+    csv_fallback = 'Attrition_Updated_with_ER_Managers.csv'
+    
+    # Robust text encoding fallback engine for safety
+    def robust_read_csv(filepath):
+        for enc in ['utf-8', 'cp1252', 'latin-1']:
+            try:
+                data = pd.read_csv(filepath, encoding=enc)
+                return data
+            except UnicodeDecodeError:
+                continue
+        return pd.read_csv(filepath, encoding='utf-8', errors='ignore')
+
+    # Check active runtime cache
     if os.path.exists(cache_path):
-        df = pd.read_csv(cache_path)
+        df = robust_read_csv(cache_path)
         df.columns = df.columns.str.strip()
         return df
+
+    # Primary check for master excel spreadsheet file
+    if os.path.exists(excel_path):
+        try:
+            df = pd.read_excel(excel_path, sheet_name='Master Attrition Data')
+        except Exception:
+            df = pd.read_excel(excel_path, sheet_name=0)
+        df.columns = df.columns.str.strip()
+        df.to_csv(cache_path, index=False)
+        return df
         
-    fallback_files = ['Attrition_Updated_with_ER_Managers.csv', 'SIP Data final.xlsx']
-    for file in fallback_files:
-        if os.path.exists(file):
-            df = pd.read_csv(file)
-            df.columns = df.columns.str.strip()
-            df.to_csv(cache_path, index=False)
-            return df
+    # Secondary check for compiled CSV
+    elif os.path.exists(csv_fallback):
+        df = robust_read_csv(csv_fallback)
+        df.columns = df.columns.str.strip()
+        df.to_csv(cache_path, index=False)
+        return df
             
     st.error("Required dataset asset could not be found in the current working directory.")
     st.stop()
@@ -166,6 +188,7 @@ if 'Intervention_Status' not in df.columns:
     df['Intervention_Status'] = 'Not Started'
 
 # --- GEOGRAPHIC REGIONAL META MAPPING DICTIONARIES ---
+# Mapped explicitly to align seamlessly with India GeoJSON ST_NM property tags
 city_to_state = {
     'Cuttack': 'Odisha', 'Pune': 'Maharashtra', 'Noida': 'Uttar Pradesh', 
     'Jodhpur': 'Rajasthan', 'Kolkata': 'West Bengal', 'Mumbai': 'Maharashtra', 
@@ -175,8 +198,21 @@ city_to_state = {
     'Chennai': 'Tamil Nadu', 'Patna': 'Bihar'
 }
 
+city_coords = {
+    'Cuttack': [20.4625, 85.8830], 'Pune': [18.5204, 73.8567], 'Noida': [28.5355, 77.3910], 
+    'Jodhpur': [26.2389, 73.0243], 'Kolkata': [22.5726, 88.3639], 'Mumbai': [19.0760, 72.8777], 
+    'Hyderabad': [17.3850, 78.4867], 'Ranchi': [23.3441, 85.3096], 'Delhi': [28.6139, 77.2090], 
+    'Siliguri': [26.7271, 88.3953], 'Bangalore': [12.9716, 77.5946], 'Coimbatore': [11.0168, 76.9558], 
+    'Kanpur': [26.4499, 80.3319], 'Lucknow': [26.8467, 80.9462], 'Ahmedabad': [23.0225, 72.5714], 
+    'Chennai': [13.0827, 80.2707], 'Patna': [25.5941, 85.1376]
+}
+
 if 'State' not in df.columns:
     df['State'] = df['Work_Location'].map(city_to_state).fillna('Other')
+if 'Latitude' not in df.columns:
+    df['Latitude'] = df['Work_Location'].map(lambda x: city_coords[x][0] if x in city_coords else np.nan)
+if 'Longitude' not in df.columns:
+    df['Longitude'] = df['Work_Location'].map(lambda x: city_coords[x][1] if x in city_coords else np.nan)
 
 if 'Age_Group' not in df.columns:
     df['Age_Group'] = pd.cut(df['AGE'], bins=[0, 24, 29, 39, 49, 100], labels=['Under 25', '25-29', '30-39', '40-49', '50 and Above'])
@@ -292,7 +328,7 @@ if st.session_state['current_page'] == "Zone wise Risk Summary":
         st.markdown('</div>', unsafe_allow_html=True)
 
 
-# --- PAGE 2: GEOGRAPHIC RISK HEAT MAP (FIXED LOAD) ---
+# --- PAGE 2: GEOGRAPHIC RISK HEAT MAP ---
 elif st.session_state['current_page'] == "Geographic Risk Heat Map":
     st.markdown("<h1 class='centered-title'>Geographic Risk Heat Map</h1>", unsafe_allow_html=True)
     
@@ -344,6 +380,17 @@ elif st.session_state['current_page'] == "Geographic Risk Heat Map":
         </div>
         """, unsafe_allow_html=True)
 
+        if st.session_state['map_selected_state'] != 'All India' and s_total > 0:
+            st.markdown("##### Top Highest-Risk Cities")
+            city_metrics = focused_df.groupby('Work_Location').apply(
+                lambda x: pd.Series({
+                    'High_Risk_Pct': (len(x[x['Risk_Level'] == 'High']) / len(x) * 100)
+                }), include_groups=False
+            ).reset_index().sort_values(by='High_Risk_Pct', ascending=False)
+            
+            for idx, c_row in city_metrics.head(5).iterrows():
+                st.caption(f"• {c_row['Work_Location']}: {c_row['High_Risk_Pct']:.1f}% High Risk share")
+
     with col_map_canvas:
         state_agg = map_df.groupby('State').apply(
             lambda x: pd.Series({
@@ -354,14 +401,12 @@ elif st.session_state['current_page'] == "Geographic Risk Heat Map":
             }), include_groups=False
         ).reset_index()
 
-        # Robust, high-speed official boundary map source
         india_geojson_url = "https://gist.githubusercontent.com/jbrobst/56c13bb3593922e8d1412f2d507f05e9/raw/4543cbac5c2a715a2d3574773447552272a7ec0f/india_states.geojson"
         
         if st.session_state['map_selected_state'] != 'All India':
             state_agg = state_agg[state_agg['State'] == st.session_state['map_selected_state']]
 
         if not state_agg.empty:
-            # FIXED: Migrated to mapbox variant to explicitly enforce spatial boundaries
             fig_map = px.choropleth_mapbox(
                 state_agg,
                 geojson=india_geojson_url,
@@ -372,7 +417,7 @@ elif st.session_state['current_page'] == "Geographic Risk Heat Map":
                 range_color=[0, 100],
                 mapbox_style="open-street-map",
                 zoom=3.8 if st.session_state['map_selected_state'] == 'All India' else 5.2,
-                center={"lat": 22.9734, "lon": 78.6568}, # Hard-anchors map focus directly over central India
+                center={"lat": 22.9734, "lon": 78.6568},
                 height=600,
                 labels={"High_Risk_Percentage": "High Risk %"},
                 custom_data=["Total_Employees", "High_Risk_Employees", "Average_Risk_Score"]
