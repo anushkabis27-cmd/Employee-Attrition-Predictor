@@ -137,7 +137,7 @@ def run_portfolio_trigger_check(df, manager_id):
         st.warning(f"System Trigger Notification Issued: Your portfolio pending High Risk share is {high_risk_share:.1f}%. Please intervene immediately.")
 
 
-# --- 4. DATA LOADING ENGINE (WITH CLEAN CSV ACTIVE CACHE DESK LAYER) ---
+# --- 4. DATA LOADING ENGINE ---
 @st.cache_data
 def load_base_data():
     cache_path = 'SIP Data final_active_cache.csv'
@@ -292,7 +292,7 @@ if st.session_state['current_page'] == "Zone wise Risk Summary":
         st.markdown('</div>', unsafe_allow_html=True)
 
 
-# --- PAGE 2: GEOGRAPHIC RISK HEAT MAP (UPDATED TO CHOROPLETH SHADING) ---
+# --- PAGE 2: GEOGRAPHIC RISK HEAT MAP (FIXED LOAD) ---
 elif st.session_state['current_page'] == "Geographic Risk Heat Map":
     st.markdown("<h1 class='centered-title'>Geographic Risk Heat Map</h1>", unsafe_allow_html=True)
     
@@ -345,7 +345,6 @@ elif st.session_state['current_page'] == "Geographic Risk Heat Map":
         """, unsafe_allow_html=True)
 
     with col_map_canvas:
-        # Aggregate the matching filtered metrics up to the State layer for continuous choropleth mapping
         state_agg = map_df.groupby('State').apply(
             lambda x: pd.Series({
                 'Total_Employees': int(len(x)),
@@ -355,33 +354,28 @@ elif st.session_state['current_page'] == "Geographic Risk Heat Map":
             }), include_groups=False
         ).reset_index()
 
-        # Token-free fallback Indian State boundaries JSON configuration layer
-        india_geojson_url = "https://raw.githubusercontent.com/Anujwit/India-State-GeoJSON/master/India_State_Boundary.json"
+        # Robust, high-speed official boundary map source
+        india_geojson_url = "https://gist.githubusercontent.com/jbrobst/56c13bb3593922e8d1412f2d507f05e9/raw/4543cbac5c2a715a2d3574773447552272a7ec0f/india_states.geojson"
         
-        # Filter map target to highlight selected region or display standard national layout
         if st.session_state['map_selected_state'] != 'All India':
             state_agg = state_agg[state_agg['State'] == st.session_state['map_selected_state']]
 
         if not state_agg.empty:
-            fig_map = px.choropleth(
+            # FIXED: Migrated to mapbox variant to explicitly enforce spatial boundaries
+            fig_map = px.choropleth_mapbox(
                 state_agg,
                 geojson=india_geojson_url,
                 locations="State",
-                featureidkey="properties.NAME_1",  # Maps directly to standard GeoJSON name structures
+                featureidkey="properties.ST_NM", 
                 color="High_Risk_Percentage",
                 color_continuous_scale=["#28A745", "#FFCC00", "#D7191C"],
                 range_color=[0, 100],
-                scope="asia",
+                mapbox_style="open-street-map",
+                zoom=3.8 if st.session_state['map_selected_state'] == 'All India' else 5.2,
+                center={"lat": 22.9734, "lon": 78.6568}, # Hard-anchors map focus directly over central India
                 height=600,
                 labels={"High_Risk_Percentage": "High Risk %"},
                 custom_data=["Total_Employees", "High_Risk_Employees", "Average_Risk_Score"]
-            )
-
-            # Center coordinates focused over Indian subcontinent configuration boundaries
-            fig_map.update_geos(
-                center={"lat": 22.5, "lon": 78.5},
-                projection_scale=4.2,
-                visible=False
             )
 
             fig_map.update_traces(
