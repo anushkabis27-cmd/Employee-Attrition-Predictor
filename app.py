@@ -146,7 +146,7 @@ def load_base_data():
         df.columns = df.columns.str.strip()
         return df
         
-    fallback_files = ['Attrition_Updated_with_ER_Managers.csv', 'Attrition_Final_Production_v8_Final_Analysis.xlsx - Sheet1_Dataset.csv']
+    fallback_files = ['Attrition_Updated_with_ER_Managers.csv', 'SIP Data final.xlsx']
     for file in fallback_files:
         if os.path.exists(file):
             df = pd.read_csv(file)
