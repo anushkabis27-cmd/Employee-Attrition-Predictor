@@ -136,41 +136,23 @@ def run_portfolio_trigger_check(df, manager_id):
         st.warning(f"System Trigger Notification Issued: Your portfolio pending High Risk share is {high_risk_share:.1f}%. Please intervene immediately.")
 
 
-# --- 4. DATA LOADING ENGINE (WITH CLEAN MULTI-ENCODING & EXCEL CACHE LAYER) ---
+# --- 4. DATA LOADING ENGINE (WITH CLEAN CSV ACTIVE CACHE DESK LAYER) ---
 @st.cache_data
 def load_base_data():
     cache_path = 'SIP Data final_active_cache.csv'
-    excel_path = 'SIP Data final.xlsx'
-    csv_fallback = 'Attrition_Updated_with_ER_Managers.csv'
     
-    def robust_read_csv(filepath):
-        for enc in ['utf-8', 'cp1252', 'latin-1']:
-            try:
-                data = pd.read_csv(filepath, encoding=enc)
-                return data
-            except UnicodeDecodeError:
-                continue
-        return pd.read_csv(filepath, encoding='utf-8', errors='ignore')
-
     if os.path.exists(cache_path):
-        df = robust_read_csv(cache_path)
+        df = pd.read_csv(cache_path)
         df.columns = df.columns.str.strip()
-        return df
-
-    if os.path.exists(excel_path):
-        try:
-            df = pd.read_excel(excel_path, sheet_name='Master Attrition Data')
-        except Exception:
-            df = pd.read_excel(excel_path, sheet_name=0)
-        df.columns = df.columns.str.strip()
-        df.to_csv(cache_path, index=False)
         return df
         
-    elif os.path.exists(csv_fallback):
-        df = robust_read_csv(csv_fallback)
-        df.columns = df.columns.str.strip()
-        df.to_csv(cache_path, index=False)
-        return df
+    fallback_files = ['Attrition_Updated_with_ER_Managers.csv', 'Attrition_Final_Production_v8_Final_Analysis.xlsx - Sheet1_Dataset.csv']
+    for file in fallback_files:
+        if os.path.exists(file):
+            df = pd.read_csv(file)
+            df.columns = df.columns.str.strip()
+            df.to_csv(cache_path, index=False)
+            return df
             
     st.error("Required dataset asset could not be found in the current working directory.")
     st.stop()
@@ -217,6 +199,7 @@ if 'Tenure_Group' not in df.columns:
 # App Navigation Variables
 if 'view_mode' not in st.session_state: st.session_state['view_mode'] = 'Percentage'
 if 'risk_filter' not in st.session_state: st.session_state['risk_filter'] = 'High'
+# UPDATED APP INITIALIZATION ROOT TO MATCH REPORT VALUE PERFECTLY
 if 'current_page' not in st.session_state: st.session_state['current_page'] = "Zone wise Risk Summary"
 if 'selected_empid' not in st.session_state: st.session_state['selected_empid'] = None
 if 'remarks_empid' not in st.session_state: st.session_state['remarks_empid'] = None
@@ -228,6 +211,7 @@ if 'map_selected_state' not in st.session_state: st.session_state['map_selected_
 # --- 5. SIDEBAR NAVIGATION CONTROLLER ---
 st.sidebar.title("iRETAIN")
 st.sidebar.markdown("---")
+# RENAMED LABELS TO GUARANTEE "Zone wise Risk Summary" PAIRS SEAMLESSLY
 page_options = [
     "Zone wise Risk Summary", 
     "Geographic Risk Heat Map", 
@@ -323,7 +307,7 @@ if st.session_state['current_page'] == "Zone wise Risk Summary":
         st.markdown('</div>', unsafe_allow_html=True)
 
 
-# --- PAGE 2: GEOGRAPHIC RISK HEAT MAP (VECTORIZED DASHBOARD STYLE) ---
+# --- PAGE 2: GEOGRAPHIC RISK HEAT MAP ---
 elif st.session_state['current_page'] == "Geographic Risk Heat Map":
     st.markdown("<h1 class='centered-title'>Geographic Risk Heat Map</h1>", unsafe_allow_html=True)
     
@@ -387,81 +371,76 @@ elif st.session_state['current_page'] == "Geographic Risk Heat Map":
                 st.caption(f"• {c_row['Work_Location']}: {c_row['High_Risk_Pct']:.1f}% High Risk share")
 
     with col_map_canvas:
-        india_geojson_url = "https://gist.githubusercontent.com/jbrobst/56c13bb3593922e8d1412f2d507f05e9/raw/4543cbac5c2a715a2d3574773447552272a7ec0f/india_states.geojson"
+        map_df_clean = map_df.dropna(subset=['Latitude', 'Longitude', 'Work_Location', 'State'])
         
-        if st.session_state['map_selected_state'] == 'All India':
-            # Complete dataset containing diverse state entries to mimic presentation mockups perfectly
-            mock_data = {
-                'State': [
-                    'Uttar Pradesh', 'Tamil Nadu', 'West Bengal', 'Maharashtra', 'Odisha', 
-                    'Delhi', 'Bihar', 'Rajasthan', 'Gujarat', 'Karnataka', 'Telangana', 'Jharkhand',
-                    'Madhya Pradesh', 'Andhra Pradesh', 'Punjab', 'Haryana', 'Kerala', 'Assam',
-                    'Jammu & Kashmir', 'Himachal Pradesh', 'Uttarakhand', 'Chhattisgarh'
-                ],
-                'High_Risk_Percentage': [84.2, 14.5, 76.1, 91.4, 44.6, 68.3, 89.1, 52.8, 22.4, 61.2, 48.7, 39.5, 55.0, 18.2, 71.0, 64.1, 11.5, 32.0, 15.4, 28.6, 51.3, 46.2],
-                'Total_Employees': [3600, 2531, 2353, 2347, 1285, 1245, 1239, 1191, 1142, 1135, 1022, 910, 850, 720, 610, 540, 480, 310, 150, 220, 340, 400],
-                'High_Risk_Employees': [3031, 367, 1790, 2145, 573, 850, 1103, 628, 255, 694, 497, 359, 467, 131, 433, 346, 55, 99, 23, 63, 174, 185],
-                'Average_Risk_Score': [81.3, 19.4, 72.8, 88.5, 41.2, 63.4, 85.0, 49.1, 25.6, 58.0, 44.2, 36.1, 51.4, 21.0, 66.8, 59.3, 14.2, 33.7, 16.5, 30.1, 53.6, 47.9]
-            }
-            plot_df = pd.DataFrame(mock_data)
-        else:
-            state_agg = map_df.groupby('State').apply(
+        if not map_df_clean.empty:
+            geo_agg = map_df_clean.groupby(['Work_Location', 'State', 'Latitude', 'Longitude']).apply(
                 lambda x: pd.Series({
                     'Total_Employees': int(len(x)),
                     'High_Risk_Employees': int(len(x[x['Risk_Level'] == 'High'])),
-                    'High_Risk_Percentage': float((len(x[x['Risk_Level'] == 'High']) / len(x) * 100)) if len(x) > 0 else 0.0,
-                    'Average_Risk_Score': float(x['Attrition_Risk_Percentage'].mean()) if len(x) > 0 else 0.0
+                    'High_Risk_Percentage': float((len(x[x['Risk_Level'] == 'High']) / len(x) * 100)),
+                    'Average_Risk_Score': float(x['Attrition_Risk_Percentage'].mean())
                 }), include_groups=False
             ).reset_index()
-            plot_df = state_agg[state_agg['State'] == st.session_state['map_selected_state']]
 
-        if not plot_df.empty:
-            # Replaced mapbox layout with pure px.choropleth to remove baseline street maps and force a stylized flat mockup
-            fig_map = px.choropleth(
-                plot_df,
-                geojson=india_geojson_url,
-                locations="State",
-                featureidkey="properties.ST_NM", 
-                color="High_Risk_Percentage",
-                color_continuous_scale=["#28A745", "#FFCC00", "#D7191C"], 
-                range_color=[0, 100],
-                height=650,
-                labels={"High_Risk_Percentage": "High Risk %"},
-                custom_data=["Total_Employees", "High_Risk_Employees", "Average_Risk_Score"]
-            )
+            geo_agg['Risk_Category'] = geo_agg['High_Risk_Percentage'].apply(classify_revised_risk_tier)
 
-            fig_map.update_geos(
-                fitbounds="locations",
-                visible=False,
-                showframe=False,
-                showcoastlines=False,
-                lakecolor="#E0F2FE",
-                bgcolor="#FFFFFF"
-            )
+            if st.session_state['map_selected_state'] == 'All India':
+                center_lat, center_lon = 22.5, 78.5
+                zoom_level = 3.6
+                plot_df = geo_agg
+            else:
+                plot_df = geo_agg[geo_agg['State'] == st.session_state['map_selected_state']]
+                if not plot_df.empty:
+                    center_lat, center_lon = float(plot_df['Latitude'].mean()), float(plot_df['Longitude'].mean())
+                    zoom_level = 5.5
+                else:
+                    center_lat, center_lon = 22.5, 78.5
+                    zoom_level = 3.6
+                    plot_df = geo_agg
 
-            fig_map.update_traces(
-                marker_line_width=1.2,
-                marker_line_color="#FFFFFF", 
-                hovertemplate="<br>".join([
-                    "<b>State: %{location}</b>",
-                    "Total Headcount: %{customdata[0]}",
-                    "High Risk Employees: %{customdata[1]}",
-                    "High Risk Concentration: %{color:.1f}%",
-                    "Average Attrition Risk: %{customdata[2]:.1f}%"
-                ])
-            )
-
-            fig_map.update_layout(
-                margin={"r":0,"t":0,"l":0,"b":0},
-                coloraxis_colorbar=dict(
-                    title="Risk Intensity",
-                    thicknessmode="pixels", thickness=15,
-                    lenmode="pixels", len=350,
-                    yanchor="middle", y=0.5,
-                    xanchor="left", x=0.01
+            if not plot_df.empty:
+                fig_map = px.scatter_mapbox(
+                    plot_df,
+                    lat="Latitude",
+                    lon="Longitude",
+                    size="Total_Employees",
+                    color="High_Risk_Percentage",
+                    color_continuous_scale=["#28A745", "#FFCC00", "#D7191C"], 
+                    range_color=[0, 100],
+                    zoom=zoom_level,
+                    center={"lat": center_lat, "lon": center_lon},
+                    text="Work_Location",
+                    mapbox_style="open-street-map",
+                    height=580,
+                    hover_name="Work_Location",
+                    labels={"High_Risk_Percentage": "High Risk %"},
+                    custom_data=["Total_Employees", "High_Risk_Employees", "High_Risk_Percentage", "Risk_Category"]
                 )
-            )
-            st.plotly_chart(fig_map, use_container_width=True)
+
+                fig_map.update_traces(
+                    hovertemplate="<br>".join([
+                        "<b>City: %{hovertext}</b>",
+                        "Total Employees: %{customdata[0]}",
+                        "High Risk Employees: %{customdata[1]}",
+                        "High Risk %: %{customdata[2]:.1f}%",
+                        "Risk Category: %{customdata[3]}"
+                    ])
+                )
+
+                fig_map.update_layout(
+                    margin={"r":0,"t":0,"l":0,"b":0},
+                    coloraxis_colorbar=dict(
+                        title="High Risk %",
+                        thicknessmode="pixels", thickness=15,
+                        lenmode="pixels", len=300,
+                        yanchor="top", y=1,
+                        xanchor="left", x=0.02
+                    )
+                )
+                st.plotly_chart(fig_map, use_container_width=True)
+            else:
+                st.info("No matching geographic records available for the specified criteria configuration.")
         else:
             st.info("No matching geographic records available for the specified criteria configuration.")
 
